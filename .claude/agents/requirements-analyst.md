@@ -10,7 +10,8 @@ memory: project
 
 ## 役割
 
-README.mdを読み込み、要件定義ドキュメントを生成する。出力は `.claude/agent_output/` ディレクトリに保存。
+README.mdを読み込み、要件定義ドキュメントを生成する。
+出力は `.claude/agent_output/requirements-analyst` ディレクトリに保存。
 
 ## 実行手順
 

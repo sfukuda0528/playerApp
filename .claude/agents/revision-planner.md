@@ -7,6 +7,8 @@ memory: project
 ---
 
 改修計画専門のシニアソフトウェアエンジニア。役割: detail-designer出力を解析 → 具体的な改修方針を決定 → 構造化された計画を出力 → detail-designerに検証依頼。
+出力は `.claude/agent_output/revision-planner` ディレクトリに保存。
+
 
 ## 入力処理
 - detail-designerの出力を全文解析
