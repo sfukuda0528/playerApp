@@ -78,10 +78,12 @@
   ↓
 ② 名前入力
   ホストのニックネームを入力
+  → sessions INSERT + participants INSERT（ホスト自身も登録）
   ↓
 ③ 招待画面
   QRコード + 6桁コード表示
   参加人数カウンター（Realtimeで更新）
+  「スタート」ボタン（手動）→ メイン画面へ遷移
   ↓
 ④ メイン画面
   スライドショー再生
@@ -164,9 +166,21 @@ Edge Function（Supabase Scheduled Function）を**5分ごと**に実行:
 
 ## セキュリティ
 
-- Supabase Row Level Security（RLS）でセッション単位のアクセス制御
-- 参加者は自分が所属するセッションのデータのみ読み書き可能
+**匿名認証の内部利用**
+- UI上は名前入力のみだが、参加時にバックエンドでSupabase Anonymous Sign-Inを実行
+- ユーザーには認証を意識させず、Supabase側でauth.uid()を発行
+- 発行されたanon UIDをparticipants.auth_idカラムで紐付け
+
+**RLS方針**
+- `participants`テーブル: 自分のauth.uid()に紐づくセッションのデータのみ読み書き可
+- `sessions`テーブル: コードが正しければ読み取り可（参加前のコード検証用）
 - コードは6桁（100万通り）。短命セッションなのでブルートフォースリスクは低い
+
+**participants テーブル追加カラム**
+
+| カラム | 型 | 備考 |
+|--------|-----|------|
+| auth_id | uuid | Supabase anon auth.uid() |
 
 ---
 
