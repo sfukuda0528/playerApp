@@ -16,7 +16,10 @@
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+
+    /* Test globals */
+    "types": ["vitest/globals"]
   },
   "include": ["vite.config.ts"]
 }
