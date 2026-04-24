@@ -14,6 +14,6 @@ export interface Participant {
   id: string
   session_id: string
   name: string
-  auth_id: string
+  auth_id: string  // Supabase Auth user.id (anonymous sign-in)
   joined_at: string
 }
