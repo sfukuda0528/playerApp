@@ -43,6 +43,13 @@ create policy "sessions: update for participants"
       where session_id = sessions.id
         and auth_id = auth.uid()
     )
+  )
+  with check (
+    exists (
+      select 1 from public.participants
+      where session_id = sessions.id
+        and auth_id = auth.uid()
+    )
   );
 
 -- participants ポリシー
@@ -54,14 +61,15 @@ create policy "participants: read own session"
       select session_id from public.participants
       where auth_id = auth.uid()
     )
-    -- コード検証フロー用: 未参加ユーザーでもセッション存在確認に必要
-    or auth.uid() is not null
   );
 
 -- 自分のauth_idに紐づくINSERTのみ許可
 create policy "participants: insert own"
   on public.participants for insert
   with check (auth_id = auth.uid());
+
+-- インデックス
+create index on public.participants(session_id);
 
 -- Realtime有効化
 alter publication supabase_realtime add table public.participants;
