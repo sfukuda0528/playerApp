@@ -15,8 +15,8 @@ export function useSessionCreate() {
     setError(null)
     try {
       const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
-      if (authError) throw authError
-      const authId = authData.user!.id
+      if (authError || !authData.user) throw authError ?? new Error('認証に失敗しました')
+      const authId = authData.user.id
 
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
