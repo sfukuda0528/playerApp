@@ -4,14 +4,12 @@ import { useParticipants } from './useParticipants'
 import type { Participant } from '../types/session'
 
 const {
-  mockUnsubscribe,
   mockSubscribe,
   mockOn,
   mockChannel,
   mockRemoveChannel,
   mockInitialFetch,
 } = vi.hoisted(() => ({
-  mockUnsubscribe: vi.fn(),
   mockSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
   mockOn: vi.fn(),
   mockChannel: vi.fn(),

@@ -6,11 +6,15 @@ export function useParticipants(sessionId: string) {
   const [participants, setParticipants] = useState<Participant[]>([])
 
   useEffect(() => {
+    let cancelled = false
+
     supabase
       .from('participants')
       .select()
       .eq('session_id', sessionId)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) { console.error('Failed to fetch participants:', error); return }
         if (data) setParticipants(data as Participant[])
       })
 
@@ -31,6 +35,7 @@ export function useParticipants(sessionId: string) {
       .subscribe()
 
     return () => {
+      cancelled = true
       supabase.removeChannel(channel)
     }
   }, [sessionId])
