@@ -51,10 +51,11 @@ export function useSessionJoin() {
         .single()
       if (participantError) throw participantError
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('sessions')
         .update({ last_active_at: new Date().toISOString() })
         .eq('id', session.id)
+      if (updateError) throw updateError
 
       return { session: session as Session, participant: participant as Participant }
     } catch (err) {
