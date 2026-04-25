@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import TopPage from './TopPage'
 
 const { mockNavigate } = vi.hoisted(() => ({
@@ -14,6 +14,8 @@ vi.mock('react-router-dom', async () => {
 })
 
 describe('TopPage', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('「セッション開始」ボタンが存在する', () => {
     render(<MemoryRouter><TopPage /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'セッション開始' })).toBeInTheDocument()
