@@ -4,9 +4,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SessionCreate from './SessionCreate'
 
-const { mockNavigate, mockCreateSession } = vi.hoisted(() => ({
+const { mockNavigate, mockCreateSession, mockError } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockCreateSession: vi.fn(),
+  mockError: { value: null as string | null },
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -17,12 +18,15 @@ vi.mock('../hooks/useSessionCreate', () => ({
   useSessionCreate: () => ({
     createSession: mockCreateSession,
     loading: false,
-    error: null,
+    get error() { return mockError.value },
   }),
 }))
 
 describe('SessionCreate', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockError.value = null
+  })
 
   it('名前入力フォームが存在する', () => {
     render(<MemoryRouter><SessionCreate /></MemoryRouter>)
@@ -47,5 +51,11 @@ describe('SessionCreate', () => {
         state: { session: fakeSession },
       })
     )
+  })
+
+  it('失敗時: エラーメッセージを表示', () => {
+    mockError.value = 'セッション作成に失敗しました'
+    render(<MemoryRouter><SessionCreate /></MemoryRouter>)
+    expect(screen.getByRole('alert')).toHaveTextContent('セッション作成に失敗しました')
   })
 })
