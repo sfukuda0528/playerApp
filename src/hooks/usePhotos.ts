@@ -17,7 +17,7 @@ export function usePhotos(sessionId: string) {
       .order('created_at', { ascending: true })
       .then(({ data, error: fetchError }) => {
         if (cancelled) return
-        if (fetchError) { setError(fetchError.message); return }
+        if (fetchError) { setError(fetchError.message); setLoading(false); return }
         if (data) setPhotos(data as Photo[])
         setLoading(false)
       })
