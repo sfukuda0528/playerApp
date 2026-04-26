@@ -4,7 +4,7 @@ export interface Session {
   id: string
   code: string
   host_name: string
-  host_auth_id: string
+  host_auth_id: string | null
   status: SessionStatus
   last_active_at: string
   inactivity_timeout_min: number

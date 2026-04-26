@@ -33,7 +33,12 @@ CREATE POLICY "photos: insert own"
 
 CREATE POLICY "photos: delete own"
   ON public.photos FOR DELETE
-  USING (uploader_auth_id = auth.uid());
+  USING (
+    uploader_auth_id = auth.uid() AND
+    session_id IN (
+      SELECT session_id FROM public.participants WHERE auth_id = auth.uid()
+    )
+  );
 
 CREATE INDEX ON public.photos(session_id);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.photos;
@@ -68,7 +73,12 @@ CREATE POLICY "music_links: insert own"
 
 CREATE POLICY "music_links: delete own"
   ON public.music_links FOR DELETE
-  USING (added_by_auth_id = auth.uid());
+  USING (
+    added_by_auth_id = auth.uid() AND
+    session_id IN (
+      SELECT session_id FROM public.participants WHERE auth_id = auth.uid()
+    )
+  );
 
 CREATE INDEX ON public.music_links(session_id);
 ALTER PUBLICATION supabase_realtime ADD TABLE public.music_links;
