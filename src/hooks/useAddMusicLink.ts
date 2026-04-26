@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 const ALLOWED: RegExp[] = [
   /^https?:\/\/(www\.)?youtube\.com\/watch/,
   /^https?:\/\/youtu\.be\//,
-  /^https?:\/\/open\.spotify\.com\//,
 ]
 
 export function isValidMusicUrl(url: string): boolean {
@@ -18,7 +17,7 @@ export function useAddMusicLink() {
   const addLink = async (sessionId: string, url: string): Promise<boolean> => {
     setError(null)
     if (!isValidMusicUrl(url)) {
-      setError('YouTube または Spotify の URL を入力してください')
+      setError('YouTube の URL を入力してください')
       return false
     }
     setLoading(true)

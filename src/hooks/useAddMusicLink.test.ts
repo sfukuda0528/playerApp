@@ -25,8 +25,8 @@ describe('isValidMusicUrl', () => {
   it('youtu.be short URL を許可', () => {
     expect(isValidMusicUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(true)
   })
-  it('Spotify URL を許可', () => {
-    expect(isValidMusicUrl('https://open.spotify.com/track/abc')).toBe(true)
+  it('Spotify URL を拒否', () => {
+    expect(isValidMusicUrl('https://open.spotify.com/track/abc')).toBe(false)
   })
   it('Twitter URL を拒否', () => {
     expect(isValidMusicUrl('https://twitter.com/something')).toBe(false)
@@ -62,7 +62,7 @@ describe('useAddMusicLink', () => {
     })
     expect(ok).toBe(false)
     expect(mockLinkInsert).not.toHaveBeenCalled()
-    expect(result.current.error).toBeTruthy()
+    expect(result.current.error).toBe('YouTube の URL を入力してください')
   })
 
   it('deleteLink: DELETE を呼びtrueを返す', async () => {
