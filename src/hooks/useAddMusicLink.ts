@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const ALLOWED: RegExp[] = [
-  /youtube\.com\/watch/,
-  /youtu\.be\//,
-  /open\.spotify\.com\//,
+  /^https?:\/\/(www\.)?youtube\.com\/watch/,
+  /^https?:\/\/youtu\.be\//,
+  /^https?:\/\/open\.spotify\.com\//,
 ]
 
 export function isValidMusicUrl(url: string): boolean {
@@ -16,12 +16,12 @@ export function useAddMusicLink() {
   const [error, setError] = useState<string | null>(null)
 
   const addLink = async (sessionId: string, url: string): Promise<boolean> => {
+    setError(null)
     if (!isValidMusicUrl(url)) {
       setError('YouTube または Spotify の URL を入力してください')
       return false
     }
     setLoading(true)
-    setError(null)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('認証が必要です')
