@@ -23,6 +23,7 @@ export function useSessionCreate() {
         .insert({
           code: generateCode(),
           host_name: hostName,
+          host_auth_id: authId,
           status: 'active',
           last_active_at: new Date().toISOString(),
           inactivity_timeout_min: 360,
@@ -34,8 +35,6 @@ export function useSessionCreate() {
       const { error: participantError } = await supabase
         .from('participants')
         .insert({ session_id: session.id, name: hostName, auth_id: authId })
-        .select()
-        .single()
       if (participantError) throw participantError
 
       return session as Session
