@@ -7,18 +7,20 @@ import type { Session } from '../types/session'
 export default function InviteScreen() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const location = useLocation()
-  const session = location.state?.session as Session
+  const session = location.state?.session as Session | undefined
   const navigate = useNavigate()
   const [qrUrl, setQrUrl] = useState('')
-  const { participants } = useParticipants(sessionId!)
+  const { participants } = useParticipants(sessionId ?? '')
 
   const joinUrl = `${window.location.origin}/join/${session?.code}`
 
   useEffect(() => {
     if (session?.code) {
-      QRCode.toDataURL(joinUrl).then(setQrUrl)
+      QRCode.toDataURL(joinUrl).then(setQrUrl).catch(console.error)
     }
-  }, [joinUrl, session?.code])
+  }, [joinUrl])
+
+  if (!sessionId) return null
 
   return (
     <div>
