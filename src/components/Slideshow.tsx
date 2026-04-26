@@ -21,13 +21,14 @@ export default function Slideshow({ photos }: Props) {
     return <div aria-label="スライドショー">写真がまだありません</div>
   }
 
-  const photo = photos[currentIndex]
+  const safeIndex = currentIndex % photos.length
+  const photo = photos[safeIndex]
   const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
 
   return (
     <div aria-label="スライドショー">
-      <img src={publicUrl} alt={`スライド ${currentIndex + 1}`} />
-      <span>{currentIndex + 1} / {photos.length}</span>
+      <img src={publicUrl} alt={`スライド ${safeIndex + 1}`} />
+      <span>{safeIndex + 1} / {photos.length}</span>
     </div>
   )
 }

@@ -4,9 +4,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import PhotoUpload from './PhotoUpload'
 import type { Photo } from '../types/session'
 
-const { mockUpload, mockDeletePhoto } = vi.hoisted(() => ({
+const { mockUpload, mockDeletePhoto, mockError } = vi.hoisted(() => ({
   mockUpload: vi.fn(),
   mockDeletePhoto: vi.fn(),
+  mockError: { value: null as string | null },
 }))
 
 vi.mock('../hooks/useUploadPhoto', () => ({
@@ -14,7 +15,7 @@ vi.mock('../hooks/useUploadPhoto', () => ({
     upload: mockUpload,
     deletePhoto: mockDeletePhoto,
     loading: false,
-    error: null,
+    error: mockError.value,
   }),
 }))
 
@@ -40,7 +41,10 @@ const otherPhoto: Photo = {
 }
 
 describe('PhotoUpload', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockError.value = null
+  })
 
   it('ファイル選択後にuploadを呼ぶ', async () => {
     mockUpload.mockResolvedValue(true)
@@ -74,5 +78,13 @@ describe('PhotoUpload', () => {
     )
     await userEvent.click(screen.getByRole('button', { name: '削除' }))
     expect(mockDeletePhoto).toHaveBeenCalledWith('ph-1', 'sess-1/001_a.jpg')
+  })
+
+  it('エラー時はアラートメッセージを表示する', () => {
+    mockError.value = 'アップロードに失敗しました'
+    render(
+      <PhotoUpload sessionId="sess-1" photos={[]} currentUserId="uid-me" />
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent('アップロードに失敗しました')
   })
 })
