@@ -1,0 +1,38 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+Deno.serve(async () => {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  )
+
+  const { data: sessions, error } = await supabase
+    .from('sessions')
+    .select('id, last_active_at, inactivity_timeout_min')
+    .eq('status', 'active')
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const now = Date.now()
+  const toEnd = (sessions ?? []).filter((s) => {
+    const lastActive = new Date(s.last_active_at).getTime()
+    const timeoutMs = s.inactivity_timeout_min * 60 * 1000
+    return now - lastActive > timeoutMs
+  })
+
+  if (toEnd.length > 0) {
+    await supabase
+      .from('sessions')
+      .update({ status: 'ended' })
+      .in('id', toEnd.map((s) => s.id))
+  }
+
+  return new Response(JSON.stringify({ checked: sessions?.length ?? 0, ended: toEnd.length }), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})
