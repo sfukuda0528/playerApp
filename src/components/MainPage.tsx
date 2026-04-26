@@ -17,15 +17,14 @@ export default function MainPage() {
   const { endSession, loading } = useSessionEnd()
   const [showJoinOverlay, setShowJoinOverlay] = useState(false)
   const [isHost, setIsHost] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState('')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { photos } = usePhotos(sessionId!)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setCurrentUserId(user.id)
-        setIsHost(session?.host_auth_id === user.id)
-      }
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) return
+      setCurrentUserId(user.id)
+      setIsHost(session?.host_auth_id === user.id)
     })
   }, [session])
 
@@ -53,8 +52,12 @@ export default function MainPage() {
   return (
     <div>
       {isHost && <Slideshow photos={photos} />}
-      <PhotoUpload sessionId={sessionId!} photos={photos} currentUserId={currentUserId} />
-      <MusicPanel sessionId={sessionId!} currentUserId={currentUserId} />
+      {currentUserId && (
+        <>
+          <PhotoUpload sessionId={sessionId!} photos={photos} currentUserId={currentUserId} />
+          <MusicPanel sessionId={sessionId!} currentUserId={currentUserId} />
+        </>
+      )}
       {isHost && (
         <>
           <button aria-label="＋メンバー" onClick={() => setShowJoinOverlay(true)}>
