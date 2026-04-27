@@ -34,6 +34,10 @@ export function useSessionJoin() {
         throw authError ?? new Error('認証に失敗しました')
       }
       const authId = authData.user.id
+      const sessionToken = authData.session?.access_token
+      console.log('[join] step2 authId:', authId, 'session present:', !!authData.session, 'token present:', !!sessionToken)
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      console.log('[join] step2.5 getSession user:', currentSession?.user?.id ?? 'NULL')
 
       // 3. 参加者数チェック（認証済みでRLS通過）
       const { count, error: countError } = await supabase
