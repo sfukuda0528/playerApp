@@ -22,10 +22,11 @@ vi.mock('../hooks/useSessionEnd', () => ({
 vi.mock('../hooks/usePhotos', () => ({
   usePhotos: () => ({ photos: [], loading: false, error: null }),
 }))
-vi.mock('./JoinOverlay', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div role="dialog"><button onClick={onClose}>閉じる</button></div>
-  ),
+vi.mock('../hooks/useParticipants', () => ({
+  useParticipants: () => ({ participants: [{ id: 'p-1' }, { id: 'p-2' }] }),
+}))
+vi.mock('qrcode', () => ({
+  default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,mock') },
 }))
 vi.mock('./Slideshow', () => ({
   default: () => <div data-testid="slideshow" />,
@@ -82,36 +83,36 @@ describe('MainPage - ホスト', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
-  it('Slideshowが表示される', async () => {
+  it('写真タブ（デフォルト）でSlideshowが表示される', async () => {
     renderAsHost()
     await waitFor(() => expect(screen.getByTestId('slideshow')).toBeInTheDocument())
   })
 
-  it('「＋メンバー」ボタンが存在する', async () => {
+  it('参加者数がヘッダーに表示される', async () => {
     renderAsHost()
-    await waitFor(() => expect(screen.getByRole('button', { name: '＋メンバー' })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('👥 2/4')).toBeInTheDocument())
   })
 
-  it('「＋メンバー」クリックでJoinOverlayが表示される', async () => {
+  it('メンバータブに切り替えるとQRコードが表示される', async () => {
     renderAsHost()
-    await waitFor(() => screen.getByRole('button', { name: '＋メンバー' }))
-    await userEvent.click(screen.getByRole('button', { name: '＋メンバー' }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    expect(await screen.findByAltText('QR Code')).toBeInTheDocument()
   })
 
-  it('JoinOverlayの閉じるでオーバーレイが非表示になる', async () => {
+  it('メンバータブに切り替えると参加コードが表示される', async () => {
     renderAsHost()
-    await waitFor(() => screen.getByRole('button', { name: '＋メンバー' }))
-    await userEvent.click(screen.getByRole('button', { name: '＋メンバー' }))
-    await userEvent.click(screen.getByRole('button', { name: '閉じる' }))
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    expect(await screen.findByText('472819')).toBeInTheDocument()
   })
 
-  it('「セッション終了」確認後にendSessionを呼び/へ遷移', async () => {
+  it('メンバータブのセッション終了ボタンでendSessionを呼び/へ遷移', async () => {
     mockEndSession.mockResolvedValue(true)
     renderAsHost()
-    await waitFor(() => screen.getByRole('button', { name: 'セッション終了' }))
-    await userEvent.click(screen.getByRole('button', { name: 'セッション終了' }))
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'セッション終了' }))
     expect(mockEndSession).toHaveBeenCalledWith('sess-1')
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
@@ -134,21 +135,27 @@ describe('MainPage - ホスト', () => {
 describe('MainPage - 参加者', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('Slideshowが表示されない', async () => {
+  it('写真タブにSlideshowが表示されない', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     expect(screen.queryByTestId('slideshow')).not.toBeInTheDocument()
   })
 
-  it('「セッション終了」ボタンが表示されない', async () => {
+  it('PhotoUploadが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+  })
+
+  it('音楽タブに切り替えるとMusicPanelが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /音楽/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /音楽/ }))
+    await waitFor(() => expect(screen.getByTestId('music-panel')).toBeInTheDocument())
+  })
+
+  it('セッション終了ボタンが存在しない', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'セッション終了' })).not.toBeInTheDocument()
-  })
-
-  it('PhotoUploadとMusicPanelは表示される', async () => {
-    renderAsParticipant()
-    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
-    expect(screen.getByTestId('music-panel')).toBeInTheDocument()
   })
 })
