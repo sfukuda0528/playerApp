@@ -19,6 +19,10 @@ export default function YouTubePlayer({
   const [playerError, setPlayerError] = useState(false)
 
   useEffect(() => {
+    setPlayerError(false)
+  }, [videoId])
+
+  useEffect(() => {
     const p = playerRef.current
     if (!p) return
     if (isPlaying) {

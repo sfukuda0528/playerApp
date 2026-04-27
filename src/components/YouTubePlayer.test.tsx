@@ -106,4 +106,12 @@ describe('YouTubePlayer', () => {
     act(() => { ytProps.onError?.() })
     expect(screen.getByRole('alert')).toHaveTextContent('再生できません')
   })
+
+  it('videoId 変更でエラーメッセージをリセット', async () => {
+    const { rerender } = render(<YouTubePlayer {...baseProps} />)
+    act(() => { ytProps.onError?.() })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    rerender(<YouTubePlayer {...baseProps} videoId="newVideoId" />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
 })
