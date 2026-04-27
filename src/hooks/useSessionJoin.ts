@@ -22,13 +22,17 @@ export function useSessionJoin() {
         .single()
 
       if (sessionError || !session) {
+        console.error('[join] step1 sessionError:', sessionError)
         setError('セッションが見つかりません')
         return null
       }
 
       // 2. 匿名サインイン（participantsのRLS適用のため、カウント前に実行）
       const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
-      if (authError || !authData.user) throw authError ?? new Error('認証に失敗しました')
+      if (authError || !authData.user) {
+        console.error('[join] step2 authError:', authError)
+        throw authError ?? new Error('認証に失敗しました')
+      }
       const authId = authData.user.id
 
       // 3. 参加者数チェック（認証済みでRLS通過）
@@ -37,7 +41,10 @@ export function useSessionJoin() {
         .select('*', { count: 'exact', head: true })
         .eq('session_id', session.id)
 
-      if (countError) throw countError
+      if (countError) {
+        console.error('[join] step3 countError:', countError)
+        throw countError
+      }
       if (count !== null && count >= 4) {
         setError('このセッションは満員です')
         return null
@@ -49,17 +56,27 @@ export function useSessionJoin() {
         .insert({ session_id: session.id, name, auth_id: authId })
         .select()
         .single()
-      if (participantError) throw participantError
+      if (participantError) {
+        console.error('[join] step4 participantError:', participantError)
+        throw participantError
+      }
 
       const { error: updateError } = await supabase
         .from('sessions')
         .update({ last_active_at: new Date().toISOString() })
         .eq('id', session.id)
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error('[join] step5 updateError:', updateError)
+        throw updateError
+      }
 
       return { session: session as Session, participant: participant as Participant }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '参加に失敗しました')
+      const msg = err instanceof Error
+        ? err.message
+        : (err as { message?: string })?.message ?? '参加に失敗しました'
+      console.error('[join] caught error:', err)
+      setError(msg)
       return null
     } finally {
       setLoading(false)
