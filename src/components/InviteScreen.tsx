@@ -10,13 +10,16 @@ export default function InviteScreen() {
   const session = location.state?.session as Session | undefined
   const navigate = useNavigate()
   const [qrUrl, setQrUrl] = useState('')
+  const [qrError, setQrError] = useState(false)
   const { participants } = useParticipants(sessionId ?? '')
+
+  const MAX_PARTICIPANTS = 4
 
   const joinUrl = `${window.location.origin}/join/${session?.code}`
 
   useEffect(() => {
     if (session?.code) {
-      QRCode.toDataURL(joinUrl).then(setQrUrl).catch(console.error)
+      QRCode.toDataURL(joinUrl).then(setQrUrl).catch(() => setQrError(true))
     }
   }, [joinUrl])
 
@@ -29,14 +32,16 @@ export default function InviteScreen() {
       </header>
       <main className="flex flex-col items-center justify-center flex-1 gap-5 px-6">
         <div className="bg-camp-warm-white border border-camp-wheat rounded-2xl p-6 flex flex-col items-center gap-4 w-full max-w-xs">
-          {qrUrl && (
+          {qrUrl ? (
             <img src={qrUrl} alt="QR Code" className="w-36 h-36 rounded-lg" />
-          )}
+          ) : qrError ? (
+            <p className="text-camp-destructive text-xs">QR生成に失敗</p>
+          ) : null}
           <span className="bg-camp-wheat text-camp-brown font-bold tracking-widest px-6 py-1.5 rounded-lg text-lg">
             {session?.code}
           </span>
           <p className="text-camp-amber text-sm font-medium">
-            {participants.length} / 4 人参加中
+            {participants.length} / {MAX_PARTICIPANTS} 人参加中
           </p>
         </div>
         <button

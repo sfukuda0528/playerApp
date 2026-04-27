@@ -22,6 +22,9 @@ export default function MainPage() {
   const { photos } = usePhotos(sessionId!)
   const { participants } = useParticipants(sessionId ?? '')
   const [qrUrl, setQrUrl] = useState('')
+  const [qrError, setQrError] = useState(false)
+
+  const MAX_PARTICIPANTS = 4
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {
@@ -34,7 +37,7 @@ export default function MainPage() {
   useEffect(() => {
     if (!session?.code) return
     const joinUrl = `${window.location.origin}/join/${session.code}`
-    QRCode.toDataURL(joinUrl).then(setQrUrl).catch(console.error)
+    QRCode.toDataURL(joinUrl).then(setQrUrl).catch(() => setQrError(true))
   }, [session?.code])
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function MainPage() {
       <header className="bg-camp-brown px-4 py-3 flex items-center justify-between flex-shrink-0">
         <span className="text-camp-cream font-bold text-sm">🏕 CampCanvas</span>
         <span className="text-camp-cream text-xs opacity-80">
-          👥 {participants.length}/4
+          👥 {participants.length}/{MAX_PARTICIPANTS}
         </span>
       </header>
 
@@ -93,18 +96,20 @@ export default function MainPage() {
 
         <TabsContent value="member" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
           <p className="text-center text-camp-amber text-sm font-medium">
-            {participants.length} / 4 人参加中
+            {participants.length} / {MAX_PARTICIPANTS} 人参加中
           </p>
           {isHost && (
             <>
-              {qrUrl && (
-                <div className="bg-camp-warm-white border border-camp-wheat rounded-xl p-4 flex flex-col items-center gap-3">
+              <div className="bg-camp-warm-white border border-camp-wheat rounded-xl p-4 flex flex-col items-center gap-3">
+                {qrUrl ? (
                   <img src={qrUrl} alt="QR Code" className="w-32 h-32" />
-                  <span className="bg-camp-wheat text-camp-brown font-bold tracking-widest px-4 py-1 rounded-md text-sm">
-                    {session?.code}
-                  </span>
-                </div>
-              )}
+                ) : qrError ? (
+                  <p className="text-camp-destructive text-xs">QR生成に失敗</p>
+                ) : null}
+                <span className="bg-camp-wheat text-camp-brown font-bold tracking-widest px-4 py-1 rounded-md text-sm">
+                  {session?.code}
+                </span>
+              </div>
               <button
                 onClick={handleEnd}
                 disabled={loading}
