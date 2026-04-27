@@ -16,6 +16,7 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
   const [url, setUrl] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [restartKey, setRestartKey] = useState(0)
 
   useEffect(() => {
     if (links.length === 0 || currentIndex >= links.length) {
@@ -32,14 +33,18 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
   const handleDelete = async (link: MusicLink, index: number) => {
     const isCurrent = index === currentIndex
     const ok = await deleteLink(link.id)
-    if (ok && isCurrent) {
+    if (!ok) return
+    if (isCurrent) {
       setIsPlaying(false)
       setCurrentIndex(0)
+    } else if (index < currentIndex) {
+      setCurrentIndex((prev) => prev - 1)
     }
   }
 
   const handleEnded = () => {
     setCurrentIndex((prev) => (prev + 1) % links.length)
+    setRestartKey((k) => k + 1)
   }
 
   const currentLink = links[currentIndex]
@@ -49,6 +54,7 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
     <div>
       {videoId && (
         <YouTubePlayer
+          key={`${currentIndex}-${restartKey}`}
           videoId={videoId}
           isPlaying={isPlaying}
           onPlayToggle={() => setIsPlaying((p) => !p)}

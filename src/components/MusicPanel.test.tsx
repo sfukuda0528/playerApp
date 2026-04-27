@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MusicPanel from './MusicPanel'
@@ -102,5 +102,36 @@ describe('MusicPanel', () => {
     const items = screen.getAllByRole('listitem')
     expect(items[0]).toHaveAttribute('aria-current', 'true')
     expect(items[1]).not.toHaveAttribute('aria-current', 'true')
+  })
+
+  it('handleEnded で aria-current が次のリンクに移動する', () => {
+    mockLinks.value = [link1, link2]
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => void
+    act(() => { onEnded() })
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).not.toHaveAttribute('aria-current', 'true')
+    expect(items[1]).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('currentIndex より前のリンク削除で再生が継続する', async () => {
+    const myLink1: MusicLink = { ...link1, id: 'ml-mine', added_by_auth_id: 'uid-me' }
+    mockLinks.value = [myLink1, link2]
+    mockDeleteLink.mockResolvedValue(true)
+    const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    // handleEnded で currentIndex を 1 に進める
+    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => void
+    act(() => { onEnded() })
+    // link2 が再生中 (currentIndex=1)
+    const items = screen.getAllByRole('listitem')
+    expect(items[1]).toHaveAttribute('aria-current', 'true')
+    // link1 (index=0) を削除
+    await userEvent.click(screen.getByRole('button', { name: '削除' }))
+    expect(mockDeleteLink).toHaveBeenCalledWith('ml-mine')
+    // links から myLink1 が消えた後のリスト (link2 のみ)
+    mockLinks.value = [link2]
+    rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    // link2 が aria-current のまま
+    expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
   })
 })
