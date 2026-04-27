@@ -8,6 +8,19 @@ interface Props {
 
 export default function Slideshow({ photos }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [signedUrls, setSignedUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    if (photos.length === 0) { setSignedUrls([]); return }
+    Promise.all(
+      photos.map((photo) =>
+        supabase.storage
+          .from('photos')
+          .createSignedUrl(photo.storage_path, 3600)
+          .then(({ data }) => data?.signedUrl ?? '')
+      )
+    ).then(setSignedUrls)
+  }, [photos])
 
   useEffect(() => {
     if (photos.length === 0) return
@@ -29,16 +42,17 @@ export default function Slideshow({ photos }: Props) {
   }
 
   const safeIndex = currentIndex % photos.length
-  const photo = photos[safeIndex]
-  const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
+  const currentUrl = signedUrls[safeIndex]
 
   return (
     <div aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
-      <img
-        src={publicUrl}
-        alt={`スライド ${safeIndex + 1}`}
-        className="w-full h-full object-cover"
-      />
+      {currentUrl && (
+        <img
+          src={currentUrl}
+          alt={`スライド ${safeIndex + 1}`}
+          className="w-full h-full object-contain"
+        />
+      )}
       <span className="absolute bottom-2 right-2 bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
         {safeIndex + 1} / {photos.length}
       </span>

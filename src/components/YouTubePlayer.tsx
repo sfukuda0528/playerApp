@@ -39,6 +39,7 @@ export default function YouTubePlayer({
         opts={{ width: '200', height: '113', playerVars: { autoplay: 0 } }}
         onReady={(event) => {
           playerRef.current = event.target as { playVideo: () => void; pauseVideo: () => void }
+          if (isPlaying) event.target.playVideo()
         }}
         onEnd={onEnded}
         onError={() => setPlayerError(true)}
