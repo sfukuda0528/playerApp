@@ -18,7 +18,14 @@ export default function Slideshow({ photos }: Props) {
   }, [photos.length])
 
   if (photos.length === 0) {
-    return <div aria-label="スライドショー">写真がまだありません</div>
+    return (
+      <div
+        aria-label="スライドショー"
+        className="w-full aspect-video bg-camp-wheat/40 rounded-xl flex items-center justify-center text-camp-amber text-sm"
+      >
+        写真がまだありません
+      </div>
+    )
   }
 
   const safeIndex = currentIndex % photos.length
@@ -26,9 +33,15 @@ export default function Slideshow({ photos }: Props) {
   const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
 
   return (
-    <div aria-label="スライドショー">
-      <img src={publicUrl} alt={`スライド ${safeIndex + 1}`} />
-      <span>{safeIndex + 1} / {photos.length}</span>
+    <div aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
+      <img
+        src={publicUrl}
+        alt={`スライド ${safeIndex + 1}`}
+        className="w-full h-full object-cover"
+      />
+      <span className="absolute bottom-2 right-2 bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
+        {safeIndex + 1} / {photos.length}
+      </span>
     </div>
   )
 }
