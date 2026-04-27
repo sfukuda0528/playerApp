@@ -1,10 +1,17 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
+
+@theme {
+  --color-camp-orange: #e07b39;
+  --color-camp-brown: #7c4a1e;
+  --color-camp-amber: #c8954a;
+  --color-camp-cream: #fdf6ec;
+  --color-camp-warm-white: #fff8f0;
+  --color-camp-wheat: #f0c896;
+  --color-camp-dark: #3d2003;
+  --color-camp-destructive: #c0392b;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
