@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Photo } from '../types/session'
 
@@ -8,19 +8,14 @@ interface Props {
 
 export default function Slideshow({ photos }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [signedUrls, setSignedUrls] = useState<string[]>([])
 
-  useEffect(() => {
-    if (photos.length === 0) { setSignedUrls([]); return }
-    Promise.all(
-      photos.map((photo) =>
-        supabase.storage
-          .from('photos')
-          .createSignedUrl(photo.storage_path, 3600)
-          .then(({ data }) => data?.signedUrl ?? '')
-      )
-    ).then(setSignedUrls)
-  }, [photos])
+  const photoUrls = useMemo(
+    () => photos.map((photo) => {
+      const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
+      return data.publicUrl
+    }),
+    [photos]
+  )
 
   useEffect(() => {
     if (photos.length === 0) return
@@ -42,7 +37,7 @@ export default function Slideshow({ photos }: Props) {
   }
 
   const safeIndex = currentIndex % photos.length
-  const currentUrl = signedUrls[safeIndex]
+  const currentUrl = photoUrls[safeIndex]
 
   return (
     <div aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useUploadPhoto } from '../hooks/useUploadPhoto'
 import type { Photo } from '../types/session'
@@ -11,23 +11,19 @@ interface Props {
 
 export default function PhotoUpload({ sessionId, photos, currentUserId }: Props) {
   const { upload, deletePhoto, loading, error } = useUploadPhoto()
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
 
   const myPhotos = useMemo(
     () => photos.filter((p) => p.uploader_auth_id === currentUserId),
     [photos, currentUserId]
   )
 
-  useEffect(() => {
-    if (myPhotos.length === 0) { setSignedUrls({}); return }
-    Promise.all(
-      myPhotos.map((photo) =>
-        supabase.storage
-          .from('photos')
-          .createSignedUrl(photo.storage_path, 3600)
-          .then(({ data }) => [photo.id, data?.signedUrl ?? ''] as [string, string])
-      )
-    ).then((entries) => setSignedUrls(Object.fromEntries(entries)))
+  const signedUrls = useMemo(() => {
+    const result: Record<string, string> = {}
+    for (const photo of myPhotos) {
+      const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
+      result[photo.id] = data.publicUrl
+    }
+    return result
   }, [myPhotos])
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
