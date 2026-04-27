@@ -4,15 +4,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MusicPanel from './MusicPanel'
 import type { MusicLink } from '../types/session'
 
-const { mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer } = vi.hoisted(() => ({
+const { mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer, capturedOptions } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
   mockLinks: { value: [] as MusicLink[] },
   mockYouTubePlayer: vi.fn(),
+  capturedOptions: { onInsert: undefined as ((link: MusicLink) => void) | undefined },
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
-  useMusicLinks: () => ({ links: mockLinks.value, loading: false, error: null }),
+  useMusicLinks: (_sessionId: string, options?: { onInsert?: (link: MusicLink) => void }) => {
+    capturedOptions.onInsert = options?.onInsert
+    return { links: mockLinks.value, loading: false, error: null }
+  },
 }))
 
 vi.mock('../hooks/useAddMusicLink', () => ({
@@ -41,6 +45,7 @@ describe('MusicPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLinks.value = []
+    capturedOptions.onInsert = undefined
     mockYouTubePlayer.mockImplementation(
       ({ videoId, isPlaying }: { videoId: string; isPlaying: boolean }) => (
         <div data-testid="youtube-player" data-video-id={videoId} data-playing={String(isPlaying)} />
@@ -112,6 +117,24 @@ describe('MusicPanel', () => {
     const items = screen.getAllByRole('listitem')
     expect(items[0]).not.toHaveAttribute('aria-current', 'true')
     expect(items[1]).toHaveAttribute('aria-current', 'true')
+  })
+
+  it('INSERT 到着（未再生）で isPlaying が true になる', () => {
+    mockLinks.value = [link1]
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(false)
+    act(() => { capturedOptions.onInsert?.(link2) })
+    expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
+  })
+
+  it('INSERT 到着（再生中）で isPlaying は変化しない', () => {
+    mockLinks.value = [link1]
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    const onPlayToggle = mockYouTubePlayer.mock.calls[0][0].onPlayToggle as () => void
+    act(() => { onPlayToggle() })
+    expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
+    act(() => { capturedOptions.onInsert?.(link2) })
+    expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
   })
 
   it('currentIndex より前のリンク削除で再生が継続する', async () => {

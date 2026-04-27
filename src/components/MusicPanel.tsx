@@ -11,7 +11,9 @@ interface Props {
 }
 
 export default function MusicPanel({ sessionId, currentUserId }: Props) {
-  const { links } = useMusicLinks(sessionId)
+  const { links } = useMusicLinks(sessionId, {
+    onInsert: () => setIsPlaying((prev) => prev || true),
+  })
   const { addLink, deleteLink, loading, error } = useAddMusicLink()
   const [url, setUrl] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
