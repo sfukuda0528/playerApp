@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { MusicLink } from '../types/session'
 
-export function useMusicLinks(sessionId: string) {
+export function useMusicLinks(
+  sessionId: string,
+  options?: { onInsert?: (link: MusicLink) => void }
+) {
   const [links, setLinks] = useState<MusicLink[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const onInsertRef = useRef(options?.onInsert)
+  useEffect(() => { onInsertRef.current = options?.onInsert })
 
   useEffect(() => {
     let cancelled = false
@@ -27,7 +32,11 @@ export function useMusicLinks(sessionId: string) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
-        (payload) => setLinks((prev) => [...prev, payload.new as MusicLink])
+        (payload) => {
+          const newLink = payload.new as MusicLink
+          setLinks((prev) => [...prev, newLink])
+          onInsertRef.current?.(newLink)
+        }
       )
       .on(
         'postgres_changes',

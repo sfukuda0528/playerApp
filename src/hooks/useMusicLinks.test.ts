@@ -72,4 +72,33 @@ describe('useMusicLinks', () => {
     unmount()
     expect(mockRemoveChannel).toHaveBeenCalledOnce()
   })
+
+  it('INSERT イベントで onInsert コールバックが呼ばれる', async () => {
+    const onInsert = vi.fn()
+    const { result } = renderHook(() => useMusicLinks('sess-1', { onInsert }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    handlers[0]({ new: link2 })
+    await waitFor(() => expect(result.current.links).toHaveLength(2))
+    expect(onInsert).toHaveBeenCalledOnce()
+    expect(onInsert).toHaveBeenCalledWith(link2)
+  })
+
+  it('初期ロード（fetch）では onInsert が呼ばれない', async () => {
+    const onInsert = vi.fn()
+    const { result } = renderHook(() => useMusicLinks('sess-1', { onInsert }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    expect(onInsert).not.toHaveBeenCalled()
+  })
+
+  it('DELETE イベントでは onInsert が呼ばれない', async () => {
+    const onInsert = vi.fn()
+    const { result } = renderHook(() => useMusicLinks('sess-1', { onInsert }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    handlers[1]({ old: { id: 'ml-1' } })
+    await waitFor(() => expect(result.current.links).toHaveLength(0))
+    expect(onInsert).not.toHaveBeenCalled()
+  })
 })
