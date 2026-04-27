@@ -158,4 +158,12 @@ describe('MainPage - 参加者', () => {
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'セッション終了' })).not.toBeInTheDocument()
   })
+
+  it('写真タブ表示中も MusicPanel が DOM に残る', async () => {
+    renderAsParticipant()
+    // photo-upload が表示された時点で currentUserId が解決済み
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    // forceMount により music-panel は写真タブ中も DOM にある
+    expect(screen.getByTestId('music-panel')).toBeInTheDocument()
+  })
 })

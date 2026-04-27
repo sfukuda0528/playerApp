@@ -88,7 +88,7 @@ export default function MainPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="music" className="flex-1 overflow-y-auto mt-0">
+        <TabsContent value="music" forceMount className="flex-1 overflow-y-auto mt-0">
           {currentUserId && (
             <MusicPanel sessionId={sessionId!} currentUserId={currentUserId} />
           )}
