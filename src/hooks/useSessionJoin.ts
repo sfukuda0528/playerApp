@@ -54,16 +54,22 @@ export function useSessionJoin() {
         return null
       }
 
-      // 4. 参加者登録
-      const { data: participant, error: participantError } = await supabase
+      // 4a. 参加者登録（INSERT単体）
+      const { error: insertError } = await supabase
         .from('participants')
         .insert({ session_id: session.id, name, auth_id: authId })
+      console.log('[join] step4a insertError:', insertError)
+      if (insertError) throw insertError
+
+      // 4b. 登録結果取得（SELECT単体）
+      const { data: participant, error: selectError } = await supabase
+        .from('participants')
         .select()
+        .eq('session_id', session.id)
+        .eq('auth_id', authId)
         .single()
-      if (participantError) {
-        console.error('[join] step4 participantError:', participantError)
-        throw participantError
-      }
+      console.log('[join] step4b selectError:', selectError, 'participant:', participant)
+      if (selectError) throw selectError
 
       const { error: updateError } = await supabase
         .from('sessions')
