@@ -1,0 +1,61 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import type { Photo } from '../types/session'
+
+interface Props {
+  photos: Photo[]
+}
+
+export default function Slideshow({ photos }: Props) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [signedUrls, setSignedUrls] = useState<string[]>([])
+
+  useEffect(() => {
+    if (photos.length === 0) { setSignedUrls([]); return }
+    Promise.all(
+      photos.map((photo) =>
+        supabase.storage
+          .from('photos')
+          .createSignedUrl(photo.storage_path, 3600)
+          .then(({ data }) => data?.signedUrl ?? '')
+      )
+    ).then(setSignedUrls)
+  }, [photos])
+
+  useEffect(() => {
+    if (photos.length === 0) return
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % photos.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [photos.length])
+
+  if (photos.length === 0) {
+    return (
+      <div
+        aria-label="スライドショー"
+        className="w-full aspect-video bg-camp-wheat/40 rounded-xl flex items-center justify-center text-camp-amber text-sm"
+      >
+        写真がまだありません
+      </div>
+    )
+  }
+
+  const safeIndex = currentIndex % photos.length
+  const currentUrl = signedUrls[safeIndex]
+
+  return (
+    <div aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
+      {currentUrl && (
+        <img
+          src={currentUrl}
+          alt={`スライド ${safeIndex + 1}`}
+          className="w-full h-full object-contain"
+        />
+      )}
+      <span className="absolute bottom-2 right-2 bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
+        {safeIndex + 1} / {photos.length}
+      </span>
+    </div>
+  )
+}

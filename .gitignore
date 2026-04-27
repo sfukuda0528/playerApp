@@ -1,0 +1,18 @@
+.superpowers/
+
+# Vite
+node_modules/
+dist/
+dist-ssr/
+
+# Environment
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
