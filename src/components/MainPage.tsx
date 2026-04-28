@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import Slideshow from './Slideshow'
@@ -27,13 +27,15 @@ export default function MainPage() {
 
   const MAX_PARTICIPANTS = 4
 
-  const resolveName = (authId: string) =>
-    participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー'
+  const resolveName = useCallback(
+    (authId: string) => participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー',
+    [participants]
+  )
 
-  const showToast = (message: string) => {
+  const showToast = useCallback((message: string) => {
     const id = ++toastIdRef.current
     setToast({ message, id })
-  }
+  }, [])
 
   const { photos } = usePhotos(sessionId!, {
     onInsert: (photo: Photo) =>
@@ -100,7 +102,7 @@ export default function MainPage() {
       </header>
 
       {toast && (
-        <div className="bg-camp-brown/90 text-camp-cream text-sm px-4 py-2 text-center flex-shrink-0">
+        <div role="status" className="bg-camp-brown/90 text-camp-cream text-sm px-4 py-2 text-center flex-shrink-0">
           {toast.message}
         </div>
       )}
