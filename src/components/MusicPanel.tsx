@@ -8,11 +8,15 @@ import type { MusicLink } from '../types/session'
 interface Props {
   sessionId: string
   currentUserId: string
+  onMusicAdd?: (link: MusicLink) => void
 }
 
-export default function MusicPanel({ sessionId, currentUserId }: Props) {
+export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Props) {
   const { links } = useMusicLinks(sessionId, {
-    onInsert: () => setIsPlaying((prev) => prev || true),
+    onInsert: (link) => {
+      setIsPlaying((prev) => prev || true)
+      onMusicAdd?.(link)
+    },
   })
   const { addLink, deleteLink, loading, error } = useAddMusicLink()
   const [url, setUrl] = useState('')

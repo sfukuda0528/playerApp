@@ -167,4 +167,12 @@ describe('MusicPanel', () => {
     // link2 が aria-current のまま
     expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
   })
+
+  it('INSERT 到着時: onMusicAdd コールバックを呼ぶ', () => {
+    const onMusicAdd = vi.fn()
+    mockLinks.value = [link1]
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" onMusicAdd={onMusicAdd} />)
+    act(() => { capturedOptions.onInsert?.(link2) })
+    expect(onMusicAdd).toHaveBeenCalledWith(link2)
+  })
 })
