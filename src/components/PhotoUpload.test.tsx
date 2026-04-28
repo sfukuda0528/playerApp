@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import PhotoUpload from './PhotoUpload'
@@ -26,6 +26,8 @@ vi.mock('../lib/supabase', () => ({
         getPublicUrl: (path: string) => ({
           data: { publicUrl: `https://example.com/${path}` },
         }),
+        createSignedUrl: (path: string) =>
+          Promise.resolve({ data: { signedUrl: `https://example.com/${path}` }, error: null }),
       }),
     },
   },
@@ -57,25 +59,31 @@ describe('PhotoUpload', () => {
     expect(mockUpload).toHaveBeenCalledWith('sess-1', file)
   })
 
-  it('自分の写真には削除ボタンが表示される', () => {
-    render(
-      <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
-    )
+  it('自分の写真には削除ボタンが表示される', async () => {
+    await act(async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
+      )
+    })
     expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
   })
 
-  it('他人の写真には削除ボタンが表示されない', () => {
-    render(
-      <PhotoUpload sessionId="sess-1" photos={[otherPhoto]} currentUserId="uid-me" />
-    )
+  it('他人の写真には削除ボタンが表示されない', async () => {
+    await act(async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[otherPhoto]} currentUserId="uid-me" />
+      )
+    })
     expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument()
   })
 
   it('削除ボタンクリックでdeletePhotoを呼ぶ', async () => {
     mockDeletePhoto.mockResolvedValue(true)
-    render(
-      <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
-    )
+    await act(async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
+      )
+    })
     await userEvent.click(screen.getByRole('button', { name: '削除' }))
     expect(mockDeletePhoto).toHaveBeenCalledWith('ph-1', 'sess-1/001_a.jpg')
   })
