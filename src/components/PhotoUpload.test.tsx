@@ -46,6 +46,15 @@ describe('PhotoUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockError.value = null
+    // navigator.canShare/share をリセット
+    Object.defineProperty(globalThis, 'navigator', {
+      value: {
+        canShare: vi.fn().mockReturnValue(true),
+        share: vi.fn().mockResolvedValue(undefined),
+      },
+      writable: true,
+      configurable: true,
+    })
   })
 
   it('ファイル選択後にuploadを呼ぶ', async () => {
@@ -94,5 +103,33 @@ describe('PhotoUpload', () => {
       <PhotoUpload sessionId="sess-1" photos={[]} currentUserId="uid-me" />
     )
     expect(screen.getByRole('alert')).toHaveTextContent('アップロードに失敗しました')
+  })
+
+  describe('全写真を保存ボタン', () => {
+    it('写真が0枚のときはボタンを表示しない', () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[]} currentUserId="uid-me" />
+      )
+      expect(screen.queryByRole('button', { name: /全写真を保存/ })).not.toBeInTheDocument()
+    })
+
+    it('canShare=falseのときはボタンを表示しない', () => {
+      Object.defineProperty(globalThis, 'navigator', {
+        value: { canShare: vi.fn().mockReturnValue(false), share: vi.fn() },
+        writable: true,
+        configurable: true,
+      })
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto, otherPhoto]} currentUserId="uid-me" />
+      )
+      expect(screen.queryByRole('button', { name: /全写真を保存/ })).not.toBeInTheDocument()
+    })
+
+    it('canShare=trueかつ写真があるときはボタンを表示する', () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto, otherPhoto]} currentUserId="uid-me" />
+      )
+      expect(screen.getByRole('button', { name: /全写真を保存/ })).toBeInTheDocument()
+    })
   })
 })
