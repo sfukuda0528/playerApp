@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import Slideshow from './Slideshow'
@@ -9,7 +9,7 @@ import { useSessionEnd } from '../hooks/useSessionEnd'
 import { usePhotos } from '../hooks/usePhotos'
 import { useParticipants } from '../hooks/useParticipants'
 import { supabase } from '../lib/supabase'
-import type { Session } from '../types/session'
+import type { Session, Photo, MusicLink } from '../types/session'
 
 export default function MainPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -19,12 +19,35 @@ export default function MainPage() {
   const { endSession, loading } = useSessionEnd()
   const [isHost, setIsHost] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const { photos } = usePhotos(sessionId!)
   const { participants } = useParticipants(sessionId ?? '')
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
+  const [toast, setToast] = useState<{ message: string; id: number } | null>(null)
+  const toastIdRef = useRef(0)
 
   const MAX_PARTICIPANTS = 4
+
+  const resolveName = (authId: string) =>
+    participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー'
+
+  const showToast = (message: string) => {
+    const id = ++toastIdRef.current
+    setToast({ message, id })
+  }
+
+  const { photos } = usePhotos(sessionId!, {
+    onInsert: (photo: Photo) =>
+      showToast(`📷 ${resolveName(photo.uploader_auth_id)}さんが写真を追加しました`),
+  })
+
+  const handleMusicAdd = (link: MusicLink) =>
+    showToast(`🎵 ${resolveName(link.added_by_auth_id)}さんが音楽を追加しました`)
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast?.id])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {
@@ -76,6 +99,12 @@ export default function MainPage() {
         </span>
       </header>
 
+      {toast && (
+        <div className="bg-camp-brown/90 text-camp-cream text-sm px-4 py-2 text-center flex-shrink-0">
+          {toast.message}
+        </div>
+      )}
+
       <Tabs defaultValue="photo" className="flex flex-col flex-1 overflow-hidden">
         <TabsContent value="photo" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
           {isHost && <Slideshow photos={photos} />}
@@ -90,7 +119,11 @@ export default function MainPage() {
 
         <TabsContent value="music" forceMount className="flex-1 overflow-y-auto mt-0 data-[state=inactive]:hidden">
           {currentUserId && (
-            <MusicPanel sessionId={sessionId!} currentUserId={currentUserId} />
+            <MusicPanel
+              sessionId={sessionId!}
+              currentUserId={currentUserId}
+              onMusicAdd={handleMusicAdd}
+            />
           )}
         </TabsContent>
 
