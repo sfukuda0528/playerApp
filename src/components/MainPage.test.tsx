@@ -201,6 +201,10 @@ describe('MainPage - トースト', () => {
     capturedMusicPanelProps.onMusicAdd = undefined
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('写真追加時: 追加者名のトーストが表示される', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
@@ -246,6 +250,5 @@ describe('MainPage - トースト', () => {
     expect(screen.getByText('📷 Aliceさんが写真を追加しました')).toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(3000) })
     expect(screen.queryByText('📷 Aliceさんが写真を追加しました')).not.toBeInTheDocument()
-    vi.useRealTimers()
   })
 })
