@@ -26,9 +26,6 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     storage: {
       from: () => ({
-        getPublicUrl: (path: string) => ({
-          data: { publicUrl: `https://example.com/${path}` },
-        }),
         createSignedUrl: (path: string) =>
           Promise.resolve({ data: { signedUrl: `https://example.com/${path}` }, error: null }),
       }),

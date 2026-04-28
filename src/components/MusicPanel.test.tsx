@@ -109,14 +109,24 @@ describe('MusicPanel', () => {
     expect(items[1]).not.toHaveAttribute('aria-current', 'true')
   })
 
-  it('handleEnded で aria-current が次のリンクに移動する', () => {
+  it('handleEnded で deleteLink を呼ぶ', async () => {
     mockLinks.value = [link1, link2]
+    mockDeleteLink.mockResolvedValue(true)
     render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => void
-    act(() => { onEnded() })
-    const items = screen.getAllByRole('listitem')
-    expect(items[0]).not.toHaveAttribute('aria-current', 'true')
-    expect(items[1]).toHaveAttribute('aria-current', 'true')
+    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
+    await act(async () => { await onEnded() })
+    expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+  })
+
+  it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
+    mockLinks.value = [link1, link2]
+    mockDeleteLink.mockResolvedValue(true)
+    const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
+    await act(async () => { await onEnded() })
+    mockLinks.value = [link2]
+    rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
   })
 
   it('INSERT 到着（未再生）で isPlaying が true になる', () => {
@@ -142,9 +152,9 @@ describe('MusicPanel', () => {
     mockLinks.value = [myLink1, link2]
     mockDeleteLink.mockResolvedValue(true)
     const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-    // handleEnded で currentIndex を 1 に進める
-    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => void
-    act(() => { onEnded() })
+    // onNext で currentIndex を 1 に進める
+    const onNext = mockYouTubePlayer.mock.calls[0][0].onNext as () => void
+    act(() => { onNext() })
     // link2 が再生中 (currentIndex=1)
     const items = screen.getAllByRole('listitem')
     expect(items[1]).toHaveAttribute('aria-current', 'true')

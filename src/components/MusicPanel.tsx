@@ -44,8 +44,9 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
     }
   }
 
-  const handleEnded = () => {
-    setCurrentIndex((prev) => (prev + 1) % links.length)
+  const handleEnded = async () => {
+    if (!currentLink) return
+    await deleteLink(currentLink.id)
     setRestartKey((k) => k + 1)
   }
 

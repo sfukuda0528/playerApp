@@ -25,29 +25,29 @@ export default function PhotoUpload({ sessionId, photos, currentUserId }: Props)
     [photos, currentUserId]
   )
 
-  const signedUrls = useMemo(() => {
-    const result: Record<string, string> = {}
-    for (const photo of myPhotos) {
-      const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
-      result[photo.id] = data.publicUrl
-    }
-    return result
-  }, [myPhotos])
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({})
 
-  const allPhotoUrls = useMemo(
-    () =>
-      photos.map((photo) => {
-        const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
-        return { url: data.publicUrl, path: photo.storage_path }
-      }),
-    [photos]
-  )
+  useEffect(() => {
+    if (myPhotos.length === 0) { setSignedUrls({}); return }
+    Promise.all(
+      myPhotos.map(async (photo) => {
+        const { data } = await supabase.storage.from('photos').createSignedUrl(photo.storage_path, 3600)
+        return [photo.id, data?.signedUrl ?? ''] as const
+      })
+    ).then((entries) => setSignedUrls(Object.fromEntries(entries)))
+  }, [myPhotos])
 
   const handleSaveAll = async () => {
     setSharing(true)
     try {
+      const signedEntries = await Promise.all(
+        photos.map(async (photo) => {
+          const { data } = await supabase.storage.from('photos').createSignedUrl(photo.storage_path, 3600)
+          return { url: data?.signedUrl ?? '', path: photo.storage_path }
+        })
+      )
       const files = await Promise.all(
-        allPhotoUrls.map(async ({ url, path }) => {
+        signedEntries.map(async ({ url, path }) => {
           const res = await fetch(url)
           const blob = await res.blob()
           const name = path.split('/').pop() ?? 'photo.jpg'
@@ -98,11 +98,13 @@ export default function PhotoUpload({ sessionId, photos, currentUserId }: Props)
         <ul className="grid grid-cols-3 gap-2">
           {myPhotos.map((photo) => (
             <li key={photo.id} className="relative aspect-square">
-              <img
-                src={signedUrls[photo.id] ?? ''}
-                alt="アップロード済み写真"
-                className="w-full h-full object-cover rounded-lg"
-              />
+              {signedUrls[photo.id] && (
+                <img
+                  src={signedUrls[photo.id]}
+                  alt="アップロード済み写真"
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              )}
               <button
                 aria-label="削除"
                 onClick={() => deletePhoto(photo.id, photo.storage_path)}
