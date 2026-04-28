@@ -33,16 +33,20 @@ describe('Slideshow', () => {
     expect(screen.getByText('写真がまだありません')).toBeInTheDocument()
   })
 
-  it('写真あり: 最初の写真を表示する', () => {
-    render(<Slideshow photos={[photo1, photo2]} />)
+  it('写真あり: 最初の写真を表示する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
     expect(screen.getByRole('img')).toHaveAttribute(
       'src', 'https://example.com/sess-1/001_a.jpg'
     )
     expect(screen.getByText('1 / 2')).toBeInTheDocument()
   })
 
-  it('5秒後: 次の写真へ自動進行する', () => {
-    render(<Slideshow photos={[photo1, photo2]} />)
+  it('5秒後: 次の写真へ自動進行する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
     act(() => { vi.advanceTimersByTime(5000) })
     expect(screen.getByRole('img')).toHaveAttribute(
       'src', 'https://example.com/sess-1/002_b.jpg'
@@ -50,8 +54,10 @@ describe('Slideshow', () => {
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
   })
 
-  it('最後の写真から最初に戻る', () => {
-    render(<Slideshow photos={[photo1, photo2]} />)
+  it('最後の写真から最初に戻る', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
     act(() => { vi.advanceTimersByTime(10000) })
     expect(screen.getByRole('img')).toHaveAttribute(
       'src', 'https://example.com/sess-1/001_a.jpg'
