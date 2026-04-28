@@ -1,8 +1,11 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import PhotoUpload from './PhotoUpload'
 import type { Photo } from '../types/session'
+
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
 
 const { mockUpload, mockDeletePhoto, mockError } = vi.hoisted(() => ({
   mockUpload: vi.fn(),
@@ -45,6 +48,9 @@ const otherPhoto: Photo = {
 describe('PhotoUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockFetch.mockResolvedValue({
+      blob: () => Promise.resolve(new Blob(['img'], { type: 'image/jpeg' })),
+    })
     mockError.value = null
     // navigator.canShare/share をリセット
     Object.defineProperty(globalThis, 'navigator', {
@@ -130,6 +136,48 @@ describe('PhotoUpload', () => {
         <PhotoUpload sessionId="sess-1" photos={[myPhoto, otherPhoto]} currentUserId="uid-me" />
       )
       expect(screen.getByRole('button', { name: /全写真を保存/ })).toBeInTheDocument()
+    })
+
+    it('ボタンクリックで全写真URLをfetchしnavigator.shareを呼ぶ', async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto, otherPhoto]} currentUserId="uid-me" />
+      )
+      await userEvent.click(screen.getByRole('button', { name: /全写真を保存/ }))
+      expect(mockFetch).toHaveBeenCalledTimes(2)
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/sess-1/001_a.jpg')
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/sess-1/002_b.jpg')
+      expect(navigator.share).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'CampCanvas 写真' })
+      )
+    })
+
+    it('保存中はボタンが無効化される', async () => {
+      let resolveShare!: () => void
+      ;(navigator.share as ReturnType<typeof vi.fn>).mockReturnValue(
+        new Promise<void>((res) => { resolveShare = res })
+      )
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
+      )
+      const btn = screen.getByRole('button', { name: /全写真を保存/ })
+      await userEvent.click(btn)
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /読み込み中/ })).toBeDisabled()
+      })
+      await act(async () => resolveShare())
+    })
+
+    it('AbortErrorは無視される', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      ;(navigator.share as ReturnType<typeof vi.fn>).mockRejectedValue(
+        Object.assign(new Error('abort'), { name: 'AbortError' })
+      )
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
+      )
+      await userEvent.click(screen.getByRole('button', { name: /全写真を保存/ }))
+      expect(consoleSpy).not.toHaveBeenCalled()
+      consoleSpy.mockRestore()
     })
   })
 })
