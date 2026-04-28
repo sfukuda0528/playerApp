@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Photo } from '../types/session'
 
-export function usePhotos(sessionId: string) {
+export function usePhotos(
+  sessionId: string,
+  options?: { onInsert?: (photo: Photo) => void }
+) {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const onInsertRef = useRef(options?.onInsert)
+  useEffect(() => { onInsertRef.current = options?.onInsert })
 
   useEffect(() => {
     let cancelled = false
@@ -27,7 +32,11 @@ export function usePhotos(sessionId: string) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'photos', filter: `session_id=eq.${sessionId}` },
-        (payload) => setPhotos((prev) => [...prev, payload.new as Photo])
+        (payload) => {
+          const newPhoto = payload.new as Photo
+          setPhotos((prev) => [...prev, newPhoto])
+          onInsertRef.current?.(newPhoto)
+        }
       )
       .on(
         'postgres_changes',
