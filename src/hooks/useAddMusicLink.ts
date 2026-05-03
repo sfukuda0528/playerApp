@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { normalizeMusicUrl } from '../utils/youtube'
 
 const ALLOWED: RegExp[] = [
   /^https?:\/\/(www\.)?youtube\.com\/watch/,
   /^https?:\/\/youtu\.be\//,
+  /^https?:\/\/(www\.)?youtube\.com\/playlist/,
 ]
 
 export function isValidMusicUrl(url: string): boolean {
@@ -16,8 +18,9 @@ export function useAddMusicLink() {
 
   const addLink = async (sessionId: string, url: string): Promise<boolean> => {
     setError(null)
-    if (!isValidMusicUrl(url)) {
-      setError('YouTube の URL を入力してください')
+    const normalized = normalizeMusicUrl(url)
+    if (!isValidMusicUrl(normalized)) {
+      setError('YouTube または YouTube Music の URL を入力してください')
       return false
     }
     setLoading(true)
@@ -27,7 +30,7 @@ export function useAddMusicLink() {
 
       const { error: insertError } = await supabase
         .from('music_links')
-        .insert({ session_id: sessionId, added_by_auth_id: user.id, url })
+        .insert({ session_id: sessionId, added_by_auth_id: user.id, url: normalized })
       if (insertError) throw insertError
 
       return true
