@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
 import YouTubePlayer from './YouTubePlayer'
-import { extractYouTubeId } from '../utils/youtube'
+import { extractYouTubeId, extractPlaylistId } from '../utils/youtube'
 import type { MusicLink } from '../types/session'
 
 interface Props {
@@ -56,14 +56,16 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
 
   const currentLink = links[currentIndex]
   const videoId = currentLink ? extractYouTubeId(currentLink.url) : null
+  const playlistId = !videoId && currentLink ? extractPlaylistId(currentLink.url) : null
 
   return (
     <div className="flex flex-col h-full">
       <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
-        {videoId ? (
+        {(videoId || playlistId) ? (
           <YouTubePlayer
             key={`${currentIndex}-${restartKey}`}
-            videoId={videoId}
+            videoId={videoId ?? undefined}
+            playlistId={playlistId ?? undefined}
             isPlaying={isPlaying}
             onPlayToggle={() => setIsPlaying((p) => !p)}
             onEnded={handleEnded}
@@ -112,7 +114,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="YouTube URL"
+            placeholder="YouTube / YouTube Music URL"
             className="flex-1 bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-sm text-camp-dark outline-none focus:border-camp-orange"
           />
           <button

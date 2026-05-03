@@ -40,6 +40,10 @@ const link2: MusicLink = {
   id: 'ml-2', session_id: 'sess-1', added_by_auth_id: 'uid-other',
   url: 'https://youtu.be/abc1234', created_at: '2026-04-26T10:01:00Z',
 }
+const playlistLink: MusicLink = {
+  id: 'ml-pl', session_id: 'sess-1', added_by_auth_id: 'uid-me',
+  url: 'https://www.youtube.com/playlist?list=PLxxx', created_at: '2026-04-26T10:02:00Z',
+}
 
 describe('MusicPanel', () => {
   beforeEach(() => {
@@ -47,7 +51,7 @@ describe('MusicPanel', () => {
     mockLinks.value = []
     capturedOptions.onInsert = undefined
     mockYouTubePlayer.mockImplementation(
-      ({ videoId, isPlaying }: { videoId: string; isPlaying: boolean }) => (
+      ({ videoId, isPlaying }: { videoId?: string; isPlaying: boolean }) => (
         <div data-testid="youtube-player" data-video-id={videoId} data-playing={String(isPlaying)} />
       )
     )
@@ -62,6 +66,15 @@ describe('MusicPanel', () => {
     mockLinks.value = [link1]
     render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
     expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-video-id', 'dQw4w9WgXcQ')
+  })
+
+  it('プレイリスト URL の link で playlistId が YouTubePlayer に渡る', () => {
+    mockLinks.value = [playlistLink]
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    expect(mockYouTubePlayer).toHaveBeenCalledWith(
+      expect.objectContaining({ playlistId: 'PLxxx', videoId: undefined }),
+      undefined
+    )
   })
 
   it('URL 入力してボタンクリックで addLink を呼ぶ', async () => {
@@ -152,19 +165,14 @@ describe('MusicPanel', () => {
     mockLinks.value = [myLink1, link2]
     mockDeleteLink.mockResolvedValue(true)
     const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-    // onNext で currentIndex を 1 に進める
     const onNext = mockYouTubePlayer.mock.calls[0][0].onNext as () => void
     act(() => { onNext() })
-    // link2 が再生中 (currentIndex=1)
     const items = screen.getAllByRole('listitem')
     expect(items[1]).toHaveAttribute('aria-current', 'true')
-    // link1 (index=0) を削除
     await userEvent.click(screen.getByRole('button', { name: '削除' }))
     expect(mockDeleteLink).toHaveBeenCalledWith('ml-mine')
-    // links から myLink1 が消えた後のリスト (link2 のみ)
     mockLinks.value = [link2]
     rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-    // link2 が aria-current のまま
     expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
   })
 
