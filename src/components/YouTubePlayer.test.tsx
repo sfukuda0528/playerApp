@@ -16,6 +16,7 @@ const { mockPlayVideo, mockPauseVideo, ytProps } = vi.hoisted(() => ({
 vi.mock('react-youtube', () => ({
   default: (props: {
     videoId: string
+    opts?: { playerVars?: { list?: string; listType?: string } }
     onReady?: (e: { target: unknown }) => void
     onEnd?: () => void
     onError?: () => void
@@ -24,7 +25,13 @@ vi.mock('react-youtube', () => ({
     ytProps.onEnd = props.onEnd
     ytProps.onError = props.onError
     props.onReady?.({ target: { playVideo: mockPlayVideo, pauseVideo: mockPauseVideo } })
-    return <div data-testid="yt-iframe" data-video-id={props.videoId} />
+    return (
+      <div
+        data-testid="yt-iframe"
+        data-video-id={props.videoId}
+        data-playlist-id={props.opts?.playerVars?.list ?? ''}
+      />
+    )
   },
 }))
 
@@ -112,6 +119,52 @@ describe('YouTubePlayer', () => {
     act(() => { ytProps.onError?.() })
     expect(screen.getByRole('alert')).toBeInTheDocument()
     rerender(<YouTubePlayer {...baseProps} videoId="newVideoId" />)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('playlistId が渡されたとき data-playlist-id が設定される', () => {
+    render(
+      <YouTubePlayer
+        playlistId="PLxxx"
+        isPlaying={false}
+        onPlayToggle={vi.fn()}
+        onEnded={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        hasPrev={false}
+        hasNext={false}
+      />
+    )
+    expect(screen.getByTestId('yt-iframe')).toHaveAttribute('data-playlist-id', 'PLxxx')
+  })
+
+  it('playlistId 変更でエラーメッセージをリセット', () => {
+    const { rerender } = render(
+      <YouTubePlayer
+        playlistId="PLxxx"
+        isPlaying={false}
+        onPlayToggle={vi.fn()}
+        onEnded={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        hasPrev={false}
+        hasNext={false}
+      />
+    )
+    act(() => { ytProps.onError?.() })
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    rerender(
+      <YouTubePlayer
+        playlistId="PLyyy"
+        isPlaying={false}
+        onPlayToggle={vi.fn()}
+        onEnded={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        hasPrev={false}
+        hasNext={false}
+      />
+    )
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

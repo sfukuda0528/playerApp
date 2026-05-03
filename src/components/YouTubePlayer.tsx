@@ -2,7 +2,8 @@ import YouTube from 'react-youtube'
 import { useEffect, useRef, useState } from 'react'
 
 interface Props {
-  videoId: string
+  videoId?: string
+  playlistId?: string
   isPlaying: boolean
   onPlayToggle: () => void
   onEnded: () => void
@@ -13,14 +14,14 @@ interface Props {
 }
 
 export default function YouTubePlayer({
-  videoId, isPlaying, onPlayToggle, onEnded, onPrev, onNext, hasPrev, hasNext,
+  videoId, playlistId, isPlaying, onPlayToggle, onEnded, onPrev, onNext, hasPrev, hasNext,
 }: Props) {
   const playerRef = useRef<{ playVideo: () => void; pauseVideo: () => void } | null>(null)
   const [playerError, setPlayerError] = useState(false)
 
   useEffect(() => {
     setPlayerError(false)
-  }, [videoId])
+  }, [videoId, playlistId])
 
   useEffect(() => {
     const p = playerRef.current
@@ -32,11 +33,15 @@ export default function YouTubePlayer({
     }
   }, [isPlaying])
 
+  const playerVars = playlistId
+    ? { autoplay: 0, list: playlistId, listType: 'playlist' as const }
+    : { autoplay: 0 }
+
   return (
     <div>
       <YouTube
-        videoId={videoId}
-        opts={{ width: '200', height: '113', playerVars: { autoplay: 0 } }}
+        videoId={videoId ?? ''}
+        opts={{ width: '200', height: '113', playerVars }}
         onReady={(event) => {
           playerRef.current = event.target as { playVideo: () => void; pauseVideo: () => void }
           if (isPlaying) event.target.playVideo()
