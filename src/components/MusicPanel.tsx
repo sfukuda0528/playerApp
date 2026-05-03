@@ -22,7 +22,6 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   const [url, setUrl] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [restartKey, setRestartKey] = useState(0)
 
   useEffect(() => {
     if (links.length === 0 || currentIndex >= links.length) {
@@ -51,7 +50,6 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   const handleEnded = async () => {
     if (!currentLink) return
     await deleteLink(currentLink.id)
-    setRestartKey((k) => k + 1)
   }
 
   const currentLink = links[currentIndex]
@@ -63,7 +61,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
       <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
         {(videoId || playlistId) ? (
           <YouTubePlayer
-            key={`${currentIndex}-${restartKey}`}
+            key={currentLink?.id ?? 'empty'}
             videoId={videoId ?? undefined}
             playlistId={playlistId ?? undefined}
             isPlaying={isPlaying}

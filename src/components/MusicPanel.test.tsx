@@ -131,6 +131,19 @@ describe('MusicPanel', () => {
     expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
   })
 
+  it('handleEnded 直後に削除済み曲 videoId で余分なレンダーが発生しない', async () => {
+    mockLinks.value = [link1, link2]
+    mockDeleteLink.mockResolvedValue(true)
+    render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+    const callsBefore = mockYouTubePlayer.mock.calls.length
+    const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
+    await act(async () => { await onEnded() })
+    const newCalls = mockYouTubePlayer.mock.calls.slice(callsBefore)
+    // 古い実装では setRestartKey により削除済み曲の videoId で再レンダーされる
+    const hasStaleVideoId = newCalls.some((call) => call[0].videoId === 'dQw4w9WgXcQ')
+    expect(hasStaleVideoId).toBe(false)
+  })
+
   it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
     mockLinks.value = [link1, link2]
     mockDeleteLink.mockResolvedValue(true)
