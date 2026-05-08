@@ -18,7 +18,13 @@ const {
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    auth: { signInAnonymously: mockSignInAnonymously },
+    auth: {
+      signInAnonymously: mockSignInAnonymously,
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: 'anon-uid-456' } } },
+        error: null,
+      }),
+    },
     from: (table: string) => {
       if (table === 'sessions') {
         return {
@@ -31,7 +37,7 @@ vi.mock('../lib/supabase', () => ({
           select: (_col: unknown, opts?: { count: string; head: boolean }) =>
             opts?.count === 'exact'
               ? { eq: () => mockCountSelect() }
-              : { eq: () => ({ single: mockParticipantInsert }) },
+              : { eq: () => ({ eq: () => ({ single: mockParticipantInsert }) }) },
           insert: () => ({ select: () => ({ single: mockParticipantInsert }) }),
         }
       }

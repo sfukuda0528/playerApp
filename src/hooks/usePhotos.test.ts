@@ -74,4 +74,12 @@ describe('usePhotos', () => {
     unmount()
     expect(mockRemoveChannel).toHaveBeenCalledOnce()
   })
+
+  it('Realtime INSERT: onInsert コールバックを呼ぶ', async () => {
+    const onInsert = vi.fn()
+    const { result } = renderHook(() => usePhotos('sess-1', { onInsert }))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    handlers[0]({ new: photo2 })
+    await waitFor(() => expect(onInsert).toHaveBeenCalledWith(photo2))
+  })
 })

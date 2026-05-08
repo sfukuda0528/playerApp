@@ -1,15 +1,26 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MainPage from './MainPage'
+import type { Photo, MusicLink } from '../types/session'
 
-const { mockNavigate, mockEndSession, mockRemoveChannel, mockGetUser, realtimeCallbacks } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockEndSession,
+  mockRemoveChannel,
+  mockGetUser,
+  realtimeCallbacks,
+  capturedPhotosInsert,
+  capturedMusicPanelProps,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockEndSession: vi.fn(),
   mockRemoveChannel: vi.fn(),
   mockGetUser: vi.fn(),
   realtimeCallbacks: { sessionStatus: null as ((payload: { new: { id: string; status: string } }) => void) | null },
+  capturedPhotosInsert: { onInsert: undefined as ((photo: Photo) => void) | undefined },
+  capturedMusicPanelProps: { onMusicAdd: undefined as ((link: MusicLink) => void) | undefined },
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -20,10 +31,18 @@ vi.mock('../hooks/useSessionEnd', () => ({
   useSessionEnd: () => ({ endSession: mockEndSession, loading: false }),
 }))
 vi.mock('../hooks/usePhotos', () => ({
-  usePhotos: () => ({ photos: [], loading: false, error: null }),
+  usePhotos: (_sessionId: string, options?: { onInsert?: (photo: Photo) => void }) => {
+    capturedPhotosInsert.onInsert = options?.onInsert
+    return { photos: [], loading: false, error: null }
+  },
 }))
 vi.mock('../hooks/useParticipants', () => ({
-  useParticipants: () => ({ participants: [{ id: 'p-1' }, { id: 'p-2' }] }),
+  useParticipants: () => ({
+    participants: [
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    ],
+  }),
 }))
 vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,mock') },
@@ -35,7 +54,10 @@ vi.mock('./PhotoUpload', () => ({
   default: () => <div data-testid="photo-upload" />,
 }))
 vi.mock('./MusicPanel', () => ({
-  default: () => <div data-testid="music-panel" />,
+  default: ({ onMusicAdd }: { onMusicAdd?: (link: MusicLink) => void }) => {
+    capturedMusicPanelProps.onMusicAdd = onMusicAdd
+    return <div data-testid="music-panel" />
+  },
 }))
 vi.mock('../lib/supabase', () => {
   const channelMock = {
@@ -80,6 +102,8 @@ function renderAsParticipant() {
 describe('MainPage - ホスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    capturedPhotosInsert.onInsert = undefined
+    capturedMusicPanelProps.onMusicAdd = undefined
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -133,7 +157,11 @@ describe('MainPage - ホスト', () => {
 })
 
 describe('MainPage - 参加者', () => {
-  beforeEach(() => { vi.clearAllMocks() })
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedPhotosInsert.onInsert = undefined
+    capturedMusicPanelProps.onMusicAdd = undefined
+  })
 
   it('写真タブにSlideshowが表示されない', async () => {
     renderAsParticipant()
@@ -161,9 +189,91 @@ describe('MainPage - 参加者', () => {
 
   it('写真タブ表示中も MusicPanel が DOM に残る', async () => {
     renderAsParticipant()
-    // photo-upload が表示された時点で currentUserId が解決済み
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
-    // forceMount により music-panel は写真タブ中も DOM にある
     expect(screen.getByTestId('music-panel')).toBeInTheDocument()
+  })
+
+  it('メンバータブでホストに👑が付く', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+  })
+
+  it('メンバータブで非ホストに👑が付かない', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await screen.findByText('Bob')
+    expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
+  })
+
+  it('メンバータブでホストが先頭に表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await screen.findByText('👑 Alice')
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('👑 Alice')
+    expect(items[1]).toHaveTextContent('Bob')
+  })
+})
+
+describe('MainPage - トースト', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    capturedPhotosInsert.onInsert = undefined
+    capturedMusicPanelProps.onMusicAdd = undefined
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('写真追加時: 追加者名のトーストが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    const photo: Photo = {
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-host',
+      storage_path: 'x.jpg', created_at: '',
+    }
+    act(() => { capturedPhotosInsert.onInsert?.(photo) })
+    expect(screen.getByText('📷 Aliceさんが写真を追加しました')).toBeInTheDocument()
+  })
+
+  it('音楽追加時: 追加者名のトーストが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    const link: MusicLink = {
+      id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-bob',
+      url: 'https://youtu.be/abc', created_at: '',
+    }
+    act(() => { capturedMusicPanelProps.onMusicAdd?.(link) })
+    expect(screen.getByText('🎵 Bobさんが音楽を追加しました')).toBeInTheDocument()
+  })
+
+  it('不明な auth_id の場合は "メンバー" と表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    const photo: Photo = {
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-unknown',
+      storage_path: 'x.jpg', created_at: '',
+    }
+    act(() => { capturedPhotosInsert.onInsert?.(photo) })
+    expect(screen.getByText('📷 メンバーさんが写真を追加しました')).toBeInTheDocument()
+  })
+
+  it('トーストは3秒後に自動消去される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    vi.useFakeTimers()
+    const photo: Photo = {
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-host',
+      storage_path: 'x.jpg', created_at: '',
+    }
+    act(() => { capturedPhotosInsert.onInsert?.(photo) })
+    expect(screen.getByText('📷 Aliceさんが写真を追加しました')).toBeInTheDocument()
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.queryByText('📷 Aliceさんが写真を追加しました')).not.toBeInTheDocument()
   })
 })

@@ -2,23 +2,26 @@ import { useEffect, useState } from 'react'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
 import YouTubePlayer from './YouTubePlayer'
-import { extractYouTubeId } from '../utils/youtube'
+import { extractYouTubeId, extractPlaylistId } from '../utils/youtube'
 import type { MusicLink } from '../types/session'
 
 interface Props {
   sessionId: string
   currentUserId: string
+  onMusicAdd?: (link: MusicLink) => void
 }
 
-export default function MusicPanel({ sessionId, currentUserId }: Props) {
+export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Props) {
   const { links } = useMusicLinks(sessionId, {
-    onInsert: () => setIsPlaying((prev) => prev || true),
+    onInsert: (link) => {
+      setIsPlaying((prev) => prev || true)
+      onMusicAdd?.(link)
+    },
   })
   const { addLink, deleteLink, loading, error } = useAddMusicLink()
   const [url, setUrl] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [restartKey, setRestartKey] = useState(0)
 
   useEffect(() => {
     if (links.length === 0 || currentIndex >= links.length) {
@@ -44,21 +47,23 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
     }
   }
 
-  const handleEnded = () => {
-    setCurrentIndex((prev) => (prev + 1) % links.length)
-    setRestartKey((k) => k + 1)
+  const handleEnded = async () => {
+    if (!currentLink) return
+    await deleteLink(currentLink.id)
   }
 
   const currentLink = links[currentIndex]
   const videoId = currentLink ? extractYouTubeId(currentLink.url) : null
+  const playlistId = !videoId && currentLink ? extractPlaylistId(currentLink.url) : null
 
   return (
     <div className="flex flex-col h-full">
       <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
-        {videoId ? (
+        {(videoId || playlistId) ? (
           <YouTubePlayer
-            key={`${currentIndex}-${restartKey}`}
-            videoId={videoId}
+            key={currentLink?.id ?? 'empty'}
+            videoId={videoId ?? undefined}
+            playlistId={playlistId ?? undefined}
             isPlaying={isPlaying}
             onPlayToggle={() => setIsPlaying((p) => !p)}
             onEnded={handleEnded}
@@ -107,7 +112,7 @@ export default function MusicPanel({ sessionId, currentUserId }: Props) {
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="YouTube URL"
+            placeholder="YouTube / YouTube Music URL"
             className="flex-1 bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-sm text-camp-dark outline-none focus:border-camp-orange"
           />
           <button

@@ -43,6 +43,18 @@ export default function InviteScreen() {
           <p className="text-camp-amber text-sm font-medium">
             {participants.length} / {MAX_PARTICIPANTS} 人参加中
           </p>
+          <ul className="w-full space-y-1">
+            {[...participants]
+              .sort((a, b) =>
+                a.auth_id === session?.host_auth_id ? -1 :
+                b.auth_id === session?.host_auth_id ? 1 : 0
+              )
+              .map((p) => (
+                <li key={p.id} className="text-camp-brown text-sm text-center">
+                  {p.auth_id === session?.host_auth_id ? '👑 ' : ''}{p.name}
+                </li>
+              ))}
+          </ul>
         </div>
         <button
           onClick={() => navigate(`/session/${sessionId}`, { state: { session } })}

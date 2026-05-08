@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Photo } from '../types/session'
 
@@ -8,14 +8,17 @@ interface Props {
 
 export default function Slideshow({ photos }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [photoUrls, setPhotoUrls] = useState<string[]>([])
 
-  const photoUrls = useMemo(
-    () => photos.map((photo) => {
-      const { data } = supabase.storage.from('photos').getPublicUrl(photo.storage_path)
-      return data.publicUrl
-    }),
-    [photos]
-  )
+  useEffect(() => {
+    if (photos.length === 0) { setPhotoUrls([]); return }
+    Promise.all(
+      photos.map(async (photo) => {
+        const { data } = await supabase.storage.from('photos').createSignedUrl(photo.storage_path, 3600)
+        return data?.signedUrl ?? ''
+      })
+    ).then(setPhotoUrls)
+  }, [photos])
 
   useEffect(() => {
     if (photos.length === 0) return
