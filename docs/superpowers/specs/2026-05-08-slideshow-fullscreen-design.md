@@ -67,7 +67,7 @@
 |------|-----|------|
 | `containerRef` | `RefObject<HTMLDivElement>` | `requestFullscreen()` の対象要素 |
 | `isFullscreen` | `boolean` | 全画面中かどうか（UI切り替え） |
-| `fullscreenEnabled` | `boolean` | ⛶ ボタン表示制御 |
+| `fullscreenEnabled` | `boolean` | ⛶ ボタン表示制御（`useState(() => document.fullscreenEnabled ?? false)` で初期化） |
 | `manualNavCount` | `number` | 手動スキップ時にタイマーリセットするトリガー |
 
 ### 追加ハンドラ
