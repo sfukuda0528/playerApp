@@ -39,8 +39,8 @@ vi.mock('../hooks/usePhotos', () => ({
 vi.mock('../hooks/useParticipants', () => ({
   useParticipants: () => ({
     participants: [
-      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice' },
-      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob' },
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     ],
   }),
 }))
@@ -192,6 +192,21 @@ describe('MainPage - 参加者', () => {
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     expect(screen.getByTestId('music-panel')).toBeInTheDocument()
   })
+
+  it('メンバータブでホストに👑が付く', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+  })
+
+  it('メンバータブで非ホストに👑が付かない', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await screen.findByText('Bob')
+    expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
+  })
 })
 
 describe('MainPage - トースト', () => {
@@ -209,7 +224,7 @@ describe('MainPage - トースト', () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     const photo: Photo = {
-      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-alice',
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-host',
       storage_path: 'x.jpg', created_at: '',
     }
     act(() => { capturedPhotosInsert.onInsert?.(photo) })
@@ -243,7 +258,7 @@ describe('MainPage - トースト', () => {
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     vi.useFakeTimers()
     const photo: Photo = {
-      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-alice',
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-host',
       storage_path: 'x.jpg', created_at: '',
     }
     act(() => { capturedPhotosInsert.onInsert?.(photo) })
