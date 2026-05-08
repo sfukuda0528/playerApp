@@ -16,7 +16,12 @@ export function useAddMusicLink() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const addLink = async (sessionId: string, url: string): Promise<boolean> => {
+  const addLink = async (
+    sessionId: string,
+    url: string,
+    title: string,
+    position: 'head' | 'tail'
+  ): Promise<boolean> => {
     setError(null)
     const normalized = normalizeMusicUrl(url)
     if (!isValidMusicUrl(normalized)) {
@@ -28,9 +33,27 @@ export function useAddMusicLink() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('認証が必要です')
 
+      const { data: extremeLink } = await supabase
+        .from('music_links')
+        .select('sort_order')
+        .eq('session_id', sessionId)
+        .order('sort_order', { ascending: position === 'head' })
+        .limit(1)
+        .maybeSingle()
+
+      const newSortOrder = extremeLink
+        ? (position === 'tail' ? extremeLink.sort_order + 1000 : extremeLink.sort_order - 1000)
+        : 0
+
       const { error: insertError } = await supabase
         .from('music_links')
-        .insert({ session_id: sessionId, added_by_auth_id: user.id, url: normalized })
+        .insert({
+          session_id: sessionId,
+          added_by_auth_id: user.id,
+          url: normalized,
+          title,
+          sort_order: newSortOrder,
+        })
       if (insertError) throw insertError
 
       return true

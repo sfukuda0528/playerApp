@@ -19,7 +19,7 @@ export function useMusicLinks(
       .from('music_links')
       .select()
       .eq('session_id', sessionId)
-      .order('created_at', { ascending: true })
+      .order('sort_order', { ascending: true })
       .then(({ data, error: fetchError }) => {
         if (cancelled) return
         if (fetchError) { setError(fetchError.message); setLoading(false); return }
@@ -34,8 +34,19 @@ export function useMusicLinks(
         { event: 'INSERT', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
         (payload) => {
           const newLink = payload.new as MusicLink
-          setLinks((prev) => [...prev, newLink])
+          setLinks((prev) => [...prev, newLink].sort((a, b) => a.sort_order - b.sort_order))
           onInsertRef.current?.(newLink)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          const updated = payload.new as MusicLink
+          setLinks((prev) =>
+            prev.map(l => l.id === updated.id ? updated : l)
+              .sort((a, b) => a.sort_order - b.sort_order)
+          )
         }
       )
       .on(
