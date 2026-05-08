@@ -109,4 +109,37 @@ describe('Slideshow', () => {
     })
     expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1)
   })
+
+  const enterFullscreen = async (slideshow: HTMLElement) => {
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: slideshow, configurable: true, writable: true,
+    })
+    await act(async () => {
+      document.dispatchEvent(new Event('fullscreenchange'))
+    })
+  }
+
+  it('全画面時: ✕ボタン・左右ナビが表示される', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    expect(screen.getByLabelText('全画面を閉じる')).toBeInTheDocument()
+    expect(screen.getByLabelText('前の写真')).toBeInTheDocument()
+    expect(screen.getByLabelText('次の写真')).toBeInTheDocument()
+    expect(screen.queryByLabelText('全画面表示')).not.toBeInTheDocument()
+  })
+
+  it('✕クリックで exitFullscreen が呼ばれる', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('全画面を閉じる'))
+    })
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+  })
 })

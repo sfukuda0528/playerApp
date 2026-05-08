@@ -36,6 +36,16 @@ export default function Slideshow({ photos }: Props) {
     return () => clearInterval(timer)
   }, [photos.length])
 
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const handleExitFullscreen = () => {
+    document.exitFullscreen().catch(console.error)
+  }
+
   if (photos.length === 0) {
     return (
       <div
@@ -59,20 +69,53 @@ export default function Slideshow({ photos }: Props) {
           className="w-full h-full object-contain"
         />
       )}
-      <div className="absolute bottom-2 right-2 flex items-center gap-1">
-        <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
-          {safeIndex + 1} / {photos.length}
-        </span>
-        {fullscreenEnabled && (
+      {isFullscreen && (
+        <>
           <button
-            aria-label="全画面表示"
-            onClick={handleFullscreen}
-            className="bg-camp-dark/60 text-camp-cream rounded-md w-6 h-6 flex items-center justify-center text-sm leading-none"
+            aria-label="全画面を閉じる"
+            onClick={handleExitFullscreen}
+            className="absolute top-2 right-2 bg-black/60 text-white rounded-md w-8 h-8 flex items-center justify-center text-base leading-none"
           >
-            ⛶
+            ✕
           </button>
-        )}
-      </div>
+          <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+            {safeIndex + 1} / {photos.length}
+          </span>
+          <button
+            aria-label="前の写真"
+            onClick={() => {}}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
+          >
+            ‹
+          </button>
+          <button
+            aria-label="次の写真"
+            onClick={() => {}}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
+          >
+            ›
+          </button>
+          <span className="absolute bottom-3 left-0 right-0 text-center text-white/40 text-xs">
+            自動スライド継続中
+          </span>
+        </>
+      )}
+      {!isFullscreen && (
+        <div className="absolute bottom-2 right-2 flex items-center gap-1">
+          <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
+            {safeIndex + 1} / {photos.length}
+          </span>
+          {fullscreenEnabled && (
+            <button
+              aria-label="全画面表示"
+              onClick={handleFullscreen}
+              className="bg-camp-dark/60 text-camp-cream rounded-md w-6 h-6 flex items-center justify-center text-sm leading-none"
+            >
+              ⛶
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
