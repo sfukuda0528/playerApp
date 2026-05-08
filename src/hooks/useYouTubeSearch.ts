@@ -25,7 +25,10 @@ export function useYouTubeSearch() {
         key: apiKey,
       })
       const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`)
-      if (!res.ok) throw new Error(`YouTube API error: ${res.status}`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
+        throw new Error(body.error?.message ?? `YouTube API error: ${res.status}`)
+      }
       const json = await res.json() as {
         items: Array<{
           id: { videoId: string }

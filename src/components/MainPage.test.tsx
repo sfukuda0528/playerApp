@@ -246,7 +246,7 @@ describe('MainPage - トースト', () => {
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     const link: MusicLink = {
       id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-bob',
-      url: 'https://youtu.be/abc', created_at: '',
+      url: 'https://youtu.be/abc', title: '', sort_order: 0, created_at: '',
     }
     act(() => { capturedMusicPanelProps.onMusicAdd?.(link) })
     expect(screen.getByText('🎵 Bobさんが音楽を追加しました')).toBeInTheDocument()
