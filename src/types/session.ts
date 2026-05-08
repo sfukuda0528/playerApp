@@ -32,5 +32,7 @@ export interface MusicLink {
   session_id: string
   added_by_auth_id: string
   url: string
+  title: string
+  sort_order: number
   created_at: string
 }
