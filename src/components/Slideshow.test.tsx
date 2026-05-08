@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Slideshow from './Slideshow'
 import type { Photo } from '../types/session'
@@ -24,8 +24,28 @@ const photo2: Photo = {
 }
 
 describe('Slideshow', () => {
-  beforeEach(() => { vi.useFakeTimers() })
-  afterEach(() => { vi.useRealTimers() })
+  let originalRequestFullscreen: typeof HTMLElement.prototype.requestFullscreen
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    originalRequestFullscreen = HTMLElement.prototype.requestFullscreen
+    HTMLElement.prototype.requestFullscreen = vi.fn().mockResolvedValue(undefined)
+    document.exitFullscreen = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(document, 'fullscreenEnabled', {
+      value: true, configurable: true, writable: true,
+    })
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: null, configurable: true, writable: true,
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    HTMLElement.prototype.requestFullscreen = originalRequestFullscreen
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: null, configurable: true, writable: true,
+    })
+  })
 
   it('写真なし: プレースホルダーを表示する', () => {
     render(<Slideshow photos={[]} />)
@@ -67,5 +87,118 @@ describe('Slideshow', () => {
     render(<Slideshow photos={[]} />)
     act(() => { vi.advanceTimersByTime(5000) })
     expect(screen.getByText('写真がまだありません')).toBeInTheDocument()
+  })
+
+  it('fullscreenEnabled=true: 写真あり時に⛶ボタンを表示する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    expect(screen.getByLabelText('全画面表示')).toBeInTheDocument()
+  })
+
+  it('fullscreenEnabled=false: ⛶ボタンを表示しない', async () => {
+    Object.defineProperty(document, 'fullscreenEnabled', { value: false, configurable: true, writable: true })
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    expect(screen.queryByLabelText('全画面表示')).not.toBeInTheDocument()
+  })
+
+  it('⛶ボタンクリックで requestFullscreen が呼ばれる', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('全画面表示'))
+    })
+    expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  const enterFullscreen = async (slideshow: HTMLElement) => {
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: slideshow, configurable: true, writable: true,
+    })
+    await act(async () => {
+      document.dispatchEvent(new Event('fullscreenchange'))
+    })
+  }
+
+  it('全画面時: ✕ボタン・左右ナビが表示される', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    expect(screen.getByLabelText('全画面を閉じる')).toBeInTheDocument()
+    expect(screen.getByLabelText('前の写真')).toBeInTheDocument()
+    expect(screen.getByLabelText('次の写真')).toBeInTheDocument()
+    expect(screen.queryByLabelText('全画面表示')).not.toBeInTheDocument()
+  })
+
+  it('✕クリックで exitFullscreen が呼ばれる', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('全画面を閉じる'))
+    })
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
+  })
+
+  it('‹クリックで前の写真に移動する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    // まず自動で photo2 へ進める
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+    // 全画面に入る
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    // ‹ クリックで photo1 へ戻る
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('前の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
+  })
+
+  it('›クリックで次の写真に移動する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('次の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+  })
+
+  it('手動スキップ後: 5秒タイマーがリセットされる', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+
+    // 3秒進める（まだ photo1）
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
+
+    // › クリックで photo2 へ（タイマーリセット）
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('次の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+
+    // さらに 3 秒（合計 6 秒経過しているが、リセット後 3 秒なので切り替わらない）
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+
+    // さらに 2 秒（リセット後 5 秒 → photo1 へ戻る）
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
   })
 })
