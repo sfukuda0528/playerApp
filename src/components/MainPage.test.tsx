@@ -207,6 +207,16 @@ describe('MainPage - 参加者', () => {
     await screen.findByText('Bob')
     expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
   })
+
+  it('メンバータブでホストが先頭に表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await screen.findByText('👑 Alice')
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('👑 Alice')
+    expect(items[1]).toHaveTextContent('Bob')
+  })
 })
 
 describe('MainPage - トースト', () => {
