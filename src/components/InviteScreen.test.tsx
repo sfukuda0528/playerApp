@@ -18,8 +18,8 @@ vi.mock('qrcode', () => ({
 vi.mock('../hooks/useParticipants', () => ({
   useParticipants: () => ({
     participants: [
-      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice' },
-      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob' },
+      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     ],
   }),
 }))
