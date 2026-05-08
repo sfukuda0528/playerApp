@@ -34,7 +34,7 @@ export default function Slideshow({ photos }: Props) {
       setCurrentIndex((prev) => (prev + 1) % photos.length)
     }, 5000)
     return () => clearInterval(timer)
-  }, [photos.length])
+  }, [photos.length, manualNavCount])
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -44,6 +44,16 @@ export default function Slideshow({ photos }: Props) {
 
   const handleExitFullscreen = () => {
     document.exitFullscreen().catch(console.error)
+  }
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setManualNavCount((c) => c + 1)
+  }
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setManualNavCount((c) => c + 1)
   }
 
   if (photos.length === 0) {
@@ -83,14 +93,14 @@ export default function Slideshow({ photos }: Props) {
           </span>
           <button
             aria-label="前の写真"
-            onClick={() => {}}
+            onClick={handlePrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
           >
             ‹
           </button>
           <button
             aria-label="次の写真"
-            onClick={() => {}}
+            onClick={handleNext}
             className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
           >
             ›

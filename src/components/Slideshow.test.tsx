@@ -142,4 +142,59 @@ describe('Slideshow', () => {
     })
     expect(document.exitFullscreen).toHaveBeenCalledTimes(1)
   })
+
+  it('‹クリックで前の写真に移動する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    // まず自動で photo2 へ進める
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+    // 全画面に入る
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    // ‹ クリックで photo1 へ戻る
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('前の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
+  })
+
+  it('›クリックで次の写真に移動する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('次の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+  })
+
+  it('手動スキップ後: 5秒タイマーがリセットされる', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    const slideshow = screen.getByLabelText('スライドショー')
+    await enterFullscreen(slideshow)
+
+    // 3秒進める（まだ photo1）
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
+
+    // › クリックで photo2 へ（タイマーリセット）
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText('次の写真'))
+    })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+
+    // さらに 3 秒（合計 6 秒経過しているが、リセット後 3 秒なので切り替わらない）
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/002_b.jpg')
+
+    // さらに 2 秒（リセット後 5 秒 → photo1 へ戻る）
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/sess-1/001_a.jpg')
+  })
 })
