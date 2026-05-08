@@ -24,8 +24,11 @@ const photo2: Photo = {
 }
 
 describe('Slideshow', () => {
+  let originalRequestFullscreen: typeof HTMLElement.prototype.requestFullscreen
+
   beforeEach(() => {
     vi.useFakeTimers()
+    originalRequestFullscreen = HTMLElement.prototype.requestFullscreen
     HTMLElement.prototype.requestFullscreen = vi.fn().mockResolvedValue(undefined)
     document.exitFullscreen = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(document, 'fullscreenEnabled', {
@@ -38,6 +41,7 @@ describe('Slideshow', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    HTMLElement.prototype.requestFullscreen = originalRequestFullscreen
     Object.defineProperty(document, 'fullscreenElement', {
       value: null, configurable: true, writable: true,
     })

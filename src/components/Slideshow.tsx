@@ -82,6 +82,7 @@ export default function Slideshow({ photos }: Props) {
       {isFullscreen && (
         <>
           <button
+            type="button"
             aria-label="全画面を閉じる"
             onClick={handleExitFullscreen}
             className="absolute top-2 right-2 bg-black/60 text-white rounded-md w-8 h-8 flex items-center justify-center text-base leading-none"
@@ -92,6 +93,7 @@ export default function Slideshow({ photos }: Props) {
             {safeIndex + 1} / {photos.length}
           </span>
           <button
+            type="button"
             aria-label="前の写真"
             onClick={handlePrev}
             className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
@@ -99,6 +101,7 @@ export default function Slideshow({ photos }: Props) {
             ‹
           </button>
           <button
+            type="button"
             aria-label="次の写真"
             onClick={handleNext}
             className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full w-9 h-9 flex items-center justify-center text-lg leading-none"
@@ -117,6 +120,7 @@ export default function Slideshow({ photos }: Props) {
           </span>
           {fullscreenEnabled && (
             <button
+              type="button"
               aria-label="全画面表示"
               onClick={handleFullscreen}
               className="bg-camp-dark/60 text-camp-cream rounded-md w-6 h-6 flex items-center justify-center text-sm leading-none"
