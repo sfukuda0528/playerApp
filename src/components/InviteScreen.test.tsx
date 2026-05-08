@@ -16,11 +16,16 @@ vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,mock') },
 }))
 vi.mock('../hooks/useParticipants', () => ({
-  useParticipants: () => ({ participants: [{ id: 'p-1', name: 'Alice' }] }),
+  useParticipants: () => ({
+    participants: [
+      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob' },
+    ],
+  }),
 }))
 
 const fakeSession = {
-  id: 'sess-1', code: '472819', host_name: 'Alice',
+  id: 'sess-1', code: '472819', host_name: 'Alice', host_auth_id: 'uid-alice',
   status: 'active', last_active_at: '', inactivity_timeout_min: 360, created_at: '',
 }
 
@@ -49,7 +54,7 @@ describe('InviteScreen', () => {
 
   it('参加者数を表示する', async () => {
     renderWithRoute()
-    expect(await screen.findByText(/1 \/ 4 人/)).toBeInTheDocument()
+    expect(await screen.findByText(/2 \/ 4 人/)).toBeInTheDocument()
   })
 
   it('スタートボタンクリックで/session/:idへ遷移', async () => {
@@ -58,5 +63,25 @@ describe('InviteScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1', {
       state: { session: fakeSession },
     })
+  })
+
+  it('メンバー名一覧を表示する', async () => {
+    renderWithRoute()
+    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+    expect(await screen.findByText('Bob')).toBeInTheDocument()
+  })
+
+  it('ホストに👑が付き、非ホストには付かない', async () => {
+    renderWithRoute()
+    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+    expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
+  })
+
+  it('ホストが先頭に表示される', async () => {
+    renderWithRoute()
+    await screen.findByText('👑 Alice')
+    const items = screen.getAllByRole('listitem')
+    expect(items[0]).toHaveTextContent('👑 Alice')
+    expect(items[1]).toHaveTextContent('Bob')
   })
 })
