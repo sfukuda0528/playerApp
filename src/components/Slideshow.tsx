@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Photo } from '../types/session'
 
@@ -9,6 +9,14 @@ interface Props {
 export default function Slideshow({ photos }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fullscreenEnabled] = useState(() => document.fullscreenEnabled ?? false)
+  const [manualNavCount, setManualNavCount] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const handleFullscreen = () => {
+    containerRef.current?.requestFullscreen().catch(console.error)
+  }
 
   useEffect(() => {
     if (photos.length === 0) { setPhotoUrls([]); return }
@@ -43,7 +51,7 @@ export default function Slideshow({ photos }: Props) {
   const currentUrl = photoUrls[safeIndex]
 
   return (
-    <div aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
+    <div ref={containerRef} aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
       {currentUrl && (
         <img
           src={currentUrl}
@@ -51,9 +59,20 @@ export default function Slideshow({ photos }: Props) {
           className="w-full h-full object-contain"
         />
       )}
-      <span className="absolute bottom-2 right-2 bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
-        {safeIndex + 1} / {photos.length}
-      </span>
+      <div className="absolute bottom-2 right-2 flex items-center gap-1">
+        <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
+          {safeIndex + 1} / {photos.length}
+        </span>
+        {fullscreenEnabled && (
+          <button
+            aria-label="全画面表示"
+            onClick={handleFullscreen}
+            className="bg-camp-dark/60 text-camp-cream rounded-md w-6 h-6 flex items-center justify-center text-sm leading-none"
+          >
+            ⛶
+          </button>
+        )}
+      </div>
     </div>
   )
 }
