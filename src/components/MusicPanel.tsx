@@ -131,6 +131,12 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
     const newIndex = links.findIndex(l => l.id === over.id)
     const sorted = arrayMove(links, oldIndex, newIndex)
 
+    const currentLinkId = links[currentIndex]?.id
+    if (currentLinkId) {
+      const newCurrentIndex = sorted.findIndex(l => l.id === currentLinkId)
+      if (newCurrentIndex !== currentIndex) setCurrentIndex(newCurrentIndex)
+    }
+
     const prev = sorted[newIndex - 1]
     const next = sorted[newIndex + 1]
 
