@@ -226,6 +226,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               </button>
             </div>
             {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
+            {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
             <ul className="flex flex-col gap-1">
               {results.map((item) => (
                 <li
