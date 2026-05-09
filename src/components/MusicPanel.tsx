@@ -226,6 +226,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               </button>
             </div>
             {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
+            {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
             <ul className="flex flex-col gap-1">
               {results.map((item) => (
                 <li
@@ -240,19 +241,21 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                   <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
                   <button
                     type="button"
+                    aria-label={`${item.title}を先頭に追加`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                     disabled={loading}
-                    className="text-xs text-camp-orange font-bold px-2 py-1 rounded hover:bg-camp-orange/10 disabled:opacity-40 flex-shrink-0"
+                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    先頭
+                    先頭に追加
                   </button>
                   <button
                     type="button"
+                    aria-label={`${item.title}を末尾に追加`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                     disabled={loading}
-                    className="text-xs text-camp-orange font-bold px-2 py-1 rounded hover:bg-camp-orange/10 disabled:opacity-40 flex-shrink-0"
+                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    末尾
+                    末尾に追加
                   </button>
                 </li>
               ))}

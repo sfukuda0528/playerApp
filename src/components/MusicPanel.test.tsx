@@ -7,7 +7,7 @@ import type { MusicLink } from '../types/session'
 const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
-  mockReorder, capturedOptions, capturedOnDragEnd,
+  mockReorder, capturedOptions, capturedOnDragEnd, mockError,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -20,6 +20,7 @@ const {
   mockReorder: vi.fn(),
   capturedOptions: { onInsert: undefined as ((link: MusicLink) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
+  mockError: { value: null as string | null },
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
@@ -34,7 +35,7 @@ vi.mock('../hooks/useAddMusicLink', () => ({
     addLink: mockAddLink,
     deleteLink: mockDeleteLink,
     loading: false,
-    error: null,
+    error: mockError.value,
   }),
 }))
 
@@ -123,6 +124,7 @@ describe('MusicPanel', () => {
     mockLinks.value = []
     mockSearchResults.value = []
     mockFetchedTitle.value = null
+    mockError.value = null
     capturedOptions.onInsert = undefined
     capturedOnDragEnd.fn = undefined
     mockYouTubePlayer.mockImplementation(
@@ -250,12 +252,12 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/thumb.jpg')
     })
 
-    it('検索結果の「先頭」ボタンで addLink を position=head で呼ぶ', async () => {
+    it('検索結果の「先頭に追加」ボタンで addLink を position=head で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '先頭' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -264,17 +266,33 @@ describe('MusicPanel', () => {
       )
     })
 
-    it('検索結果の「末尾」ボタンで addLink を position=tail で呼ぶ', async () => {
+    it('検索結果の「末尾に追加」ボタンで addLink を position=tail で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '末尾' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を末尾に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
         '検索結果動画',
         'tail'
+      )
+    })
+
+    it('addLink 失敗時に error を表示する', async () => {
+      mockSearchResults.value = [
+        { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
+      ]
+      mockAddLink.mockImplementation(async () => {
+        mockError.value = '追加に失敗しました'
+        return false
+      })
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('追加に失敗しました')
       )
     })
   })
