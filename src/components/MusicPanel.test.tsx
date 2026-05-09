@@ -257,7 +257,7 @@ describe('MusicPanel', () => {
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -271,7 +271,7 @@ describe('MusicPanel', () => {
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を末尾に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -289,7 +289,7 @@ describe('MusicPanel', () => {
         return false
       })
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('追加に失敗しました')
