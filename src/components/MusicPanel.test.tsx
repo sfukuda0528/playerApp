@@ -7,7 +7,7 @@ import type { MusicLink } from '../types/session'
 const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
-  mockReorder, capturedOptions, capturedOnDragEnd, mockError,
+  mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -18,15 +18,16 @@ const {
   mockFetchTitle: vi.fn(),
   mockFetchedTitle: { value: null as string | null },
   mockReorder: vi.fn(),
-  capturedOptions: { onInsert: undefined as ((link: MusicLink) => void) | undefined },
+  mockOptimisticReorder: vi.fn(),
+  capturedOptions: { onInsert: undefined as ((link: MusicLink, prevLinks: MusicLink[]) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
   mockError: { value: null as string | null },
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
-  useMusicLinks: (_sessionId: string, options?: { onInsert?: (link: MusicLink) => void }) => {
+  useMusicLinks: (_sessionId: string, options?: { onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void }) => {
     capturedOptions.onInsert = options?.onInsert
-    return { links: mockLinks.value, loading: false, error: null }
+    return { links: mockLinks.value, loading: false, error: null, optimisticReorder: mockOptimisticReorder }
   },
 }))
 
@@ -222,6 +223,18 @@ describe('MusicPanel', () => {
 
       expect(mockReorder).not.toHaveBeenCalled()
     })
+
+    it('onDragEnd 発火で optimisticReorder を呼ぶ（楽観的更新）', async () => {
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+
+      await act(async () => {
+        capturedOnDragEnd.fn?.({ active: { id: 'ml-2' }, over: { id: 'ml-1' } })
+      })
+
+      expect(mockOptimisticReorder).toHaveBeenCalledOnce()
+      expect(mockOptimisticReorder).toHaveBeenCalledWith([link2, link1])
+    })
   })
 
   describe('検索タブ（デフォルト）', () => {
@@ -383,7 +396,7 @@ describe('MusicPanel', () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(false)
-      act(() => { capturedOptions.onInsert?.(link2) })
+      act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
     })
 
@@ -391,8 +404,33 @@ describe('MusicPanel', () => {
       const onMusicAdd = vi.fn()
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" onMusicAdd={onMusicAdd} />)
-      act(() => { capturedOptions.onInsert?.(link2) })
+      act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(onMusicAdd).toHaveBeenCalledWith(link2)
+    })
+
+    it('先頭に INSERT されたとき currentIndex が +1 される（再生中の曲が変わらない）', () => {
+      const newLink: MusicLink = {
+        id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-other',
+        url: 'https://youtu.be/new', title: '先頭に追加される曲',
+        sort_order: 0, created_at: '2026-04-26T10:02:00Z',
+      }
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      // 初期状態: currentIndex=0, link1 が再生中
+      expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
+
+      // newLink が先頭（sort_order=0）に挿入される
+      // prevLinks=[link1, link2], newLink を先頭に追加 → insertedAt=0 → currentIndex: 0→1
+      act(() => { capturedOptions.onInsert?.(newLink, [link1, link2]) })
+
+      // links も先頭にnewLinkが追加された状態に更新
+      mockLinks.value = [newLink, link1, link2]
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+
+      // currentIndex=1 になっているので link1（index=1）が aria-current
+      const items = screen.getAllByRole('listitem')
+      expect(items[1]).toHaveAttribute('aria-current', 'true')
     })
   })
 })
