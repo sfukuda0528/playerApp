@@ -252,12 +252,12 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/thumb.jpg')
     })
 
-    it('検索結果の「先頭」ボタンで addLink を position=head で呼ぶ', async () => {
+    it('検索結果の「先頭に追加」ボタンで addLink を position=head で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '先頭' }))
+      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -266,12 +266,12 @@ describe('MusicPanel', () => {
       )
     })
 
-    it('検索結果の「末尾」ボタンで addLink を position=tail で呼ぶ', async () => {
+    it('検索結果の「末尾に追加」ボタンで addLink を position=tail で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '末尾' }))
+      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -289,7 +289,7 @@ describe('MusicPanel', () => {
         return false
       })
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '先頭' }))
+      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('追加に失敗しました')

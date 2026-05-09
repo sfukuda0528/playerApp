@@ -243,17 +243,17 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                     type="button"
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                     disabled={loading}
-                    className="text-xs text-camp-orange font-bold px-2 py-1 rounded hover:bg-camp-orange/10 disabled:opacity-40 flex-shrink-0"
+                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    先頭
+                    先頭に追加
                   </button>
                   <button
                     type="button"
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                     disabled={loading}
-                    className="text-xs text-camp-orange font-bold px-2 py-1 rounded hover:bg-camp-orange/10 disabled:opacity-40 flex-shrink-0"
+                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    末尾
+                    末尾に追加
                   </button>
                 </li>
               ))}
