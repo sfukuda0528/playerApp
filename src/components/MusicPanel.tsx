@@ -72,7 +72,9 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
     onInsert: (link, prevLinks) => {
       const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
       const insertedAt = newSortedLinks.findIndex(l => l.id === link.id)
-      setCurrentIndex((prev) => insertedAt <= prev ? prev + 1 : prev)
+      if (prevLinks.length > 0) {
+        setCurrentIndex((prev) => insertedAt <= prev ? prev + 1 : prev)
+      }
       setIsPlaying(true)
       onMusicAdd?.(link)
     },

@@ -392,6 +392,14 @@ describe('MusicPanel', () => {
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
     })
 
+    it('空キューに最初の曲が INSERT されたとき isPlaying が true になる', () => {
+      mockLinks.value = []
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      mockLinks.value = [link1]
+      act(() => { capturedOptions.onInsert?.(link1, []) })
+      expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
+    })
+
     it('INSERT 到着（未再生）で isPlaying が true になる', () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
