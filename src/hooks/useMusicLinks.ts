@@ -4,13 +4,16 @@ import type { MusicLink } from '../types/session'
 
 export function useMusicLinks(
   sessionId: string,
-  options?: { onInsert?: (link: MusicLink) => void }
+  options?: { onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void }
 ) {
   const [links, setLinks] = useState<MusicLink[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const onInsertRef = useRef(options?.onInsert)
   useEffect(() => { onInsertRef.current = options?.onInsert })
+
+  const linksRef = useRef<MusicLink[]>([])
+  useEffect(() => { linksRef.current = links }, [links])
 
   useEffect(() => {
     let cancelled = false
@@ -34,8 +37,9 @@ export function useMusicLinks(
         { event: 'INSERT', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
         (payload) => {
           const newLink = payload.new as MusicLink
+          const prevLinks = linksRef.current
           setLinks((prev) => [...prev, newLink].sort((a, b) => a.sort_order - b.sort_order))
-          onInsertRef.current?.(newLink)
+          onInsertRef.current?.(newLink, prevLinks)
         }
       )
       .on(
@@ -62,5 +66,7 @@ export function useMusicLinks(
     }
   }, [sessionId])
 
-  return { links, loading, error }
+  const optimisticReorder = (sorted: MusicLink[]) => setLinks(sorted)
+
+  return { links, loading, error, optimisticReorder }
 }

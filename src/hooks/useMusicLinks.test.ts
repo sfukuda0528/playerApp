@@ -105,7 +105,7 @@ describe('useMusicLinks', () => {
     handlers[0]({ new: link2 })
     await waitFor(() => expect(result.current.links).toHaveLength(2))
     expect(onInsert).toHaveBeenCalledOnce()
-    expect(onInsert).toHaveBeenCalledWith(link2)
+    expect(onInsert).toHaveBeenCalledWith(link2, [link1])
   })
 
   it('初期ロード（fetch）では onInsert が呼ばれない', async () => {

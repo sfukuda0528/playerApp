@@ -68,9 +68,12 @@ function SortableQueueItem({
 }
 
 export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Props) {
-  const { links } = useMusicLinks(sessionId, {
-    onInsert: (link) => {
-      setIsPlaying((prev) => prev || true)
+  const { links, optimisticReorder } = useMusicLinks(sessionId, {
+    onInsert: (link, prevLinks) => {
+      const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
+      const insertedAt = newSortedLinks.findIndex(l => l.id === link.id)
+      setCurrentIndex((prev) => insertedAt <= prev ? prev + 1 : prev)
+      setIsPlaying(true)
       onMusicAdd?.(link)
     },
   })
@@ -130,6 +133,8 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
     const oldIndex = links.findIndex(l => l.id === active.id)
     const newIndex = links.findIndex(l => l.id === over.id)
     const sorted = arrayMove(links, oldIndex, newIndex)
+
+    optimisticReorder(sorted)
 
     const currentLinkId = links[currentIndex]?.id
     if (currentLinkId) {
