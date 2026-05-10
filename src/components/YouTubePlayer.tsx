@@ -1,5 +1,5 @@
 import YouTube from 'react-youtube'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 interface Props {
   videoId?: string
@@ -7,6 +7,7 @@ interface Props {
   isPlaying: boolean
   onPlayToggle: () => void
   onEnded: () => void
+  onError?: () => void
   onPrev: () => void
   onNext: () => void
   hasPrev: boolean
@@ -14,14 +15,9 @@ interface Props {
 }
 
 export default function YouTubePlayer({
-  videoId, playlistId, isPlaying, onPlayToggle, onEnded, onPrev, onNext, hasPrev, hasNext,
+  videoId, playlistId, isPlaying, onPlayToggle, onEnded, onError, onPrev, onNext, hasPrev, hasNext,
 }: Props) {
   const playerRef = useRef<{ playVideo: () => void; pauseVideo: () => void } | null>(null)
-  const [playerError, setPlayerError] = useState(false)
-
-  useEffect(() => {
-    setPlayerError(false)
-  }, [videoId, playlistId])
 
   useEffect(() => {
     const p = playerRef.current
@@ -47,9 +43,8 @@ export default function YouTubePlayer({
           if (isPlaying) event.target.playVideo()
         }}
         onEnd={onEnded}
-        onError={() => setPlayerError(true)}
+        onError={onError}
       />
-      {playerError && <p role="alert">再生できません</p>}
       <div>
         <button onClick={onPrev} disabled={!hasPrev} aria-label="前へ">◀</button>
         <button onClick={onPlayToggle} aria-label={isPlaying ? '停止' : '再生'}>
