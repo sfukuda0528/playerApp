@@ -108,6 +108,7 @@ describe('MainPage - ホスト', () => {
     vi.clearAllMocks()
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
+    capturedMusicPanelProps.isHost = undefined
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -170,6 +171,7 @@ describe('MainPage - 参加者', () => {
     vi.clearAllMocks()
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
+    capturedMusicPanelProps.isHost = undefined
   })
 
   it('写真タブにSlideshowが表示されない', async () => {
@@ -238,6 +240,7 @@ describe('MainPage - トースト', () => {
     vi.clearAllMocks()
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
+    capturedMusicPanelProps.isHost = undefined
   })
 
   afterEach(() => {
