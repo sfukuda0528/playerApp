@@ -39,7 +39,7 @@ export default function SessionJoin() {
               onChange={(e) => setCode(e.target.value)}
               placeholder="123456"
               maxLength={6}
-              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-sm tracking-widest placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange uppercase"
+              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-base tracking-widest placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange uppercase"
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -48,7 +48,7 @@ export default function SessionJoin() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="ニックネーム"
-              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-sm placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange"
+              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-base placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange"
             />
           </label>
           {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}

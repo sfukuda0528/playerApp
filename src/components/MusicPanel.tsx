@@ -271,7 +271,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
                 placeholder="曲名・アーティスト名で検索"
-                className="flex-1 bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-sm text-camp-dark outline-none focus:border-camp-orange"
+                className="flex-1 bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
               />
               <button
                 type="button"
@@ -326,7 +326,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               onChange={(e) => setUrlInput(e.target.value)}
               onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
               placeholder="YouTube / YouTube Music URL"
-              className="w-full bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-sm text-camp-dark outline-none focus:border-camp-orange"
+              className="w-full bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
             />
             {titleLoading && (
               <p className="text-camp-wheat text-xs">タイトル取得中...</p>

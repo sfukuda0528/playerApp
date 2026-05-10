@@ -36,7 +36,7 @@ export default function SessionCreate() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="ニックネーム"
-              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-sm placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange"
+              className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-base placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange"
             />
           </label>
           {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
