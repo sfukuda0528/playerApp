@@ -5,9 +5,10 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faGripVertical, faXmark, faMagnifyingGlass, faList, faPlus, faForwardStep,
+  faGripVertical, faXmark, faMagnifyingGlass, faList,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
+import { ListStart, ListEnd } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
@@ -349,7 +350,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      <FontAwesomeIcon icon={faForwardStep} />
+                      <ListStart size={13} />
                       次に再生
                     </button>
                     <button
@@ -360,7 +361,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      <FontAwesomeIcon icon={faPlus} />
+                      <ListEnd size={13} />
                       キューに追加
                     </button>
                   </li>
@@ -391,7 +392,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   className="flex-1 text-white text-sm font-bold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5"
                   style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
-                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  <ListStart size={15} />
                   次に再生
                 </button>
                 <button
@@ -401,7 +402,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   className="flex-1 text-white text-sm font-bold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5"
                   style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
-                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  <ListEnd size={15} />
                   キューに追加
                 </button>
               </div>
