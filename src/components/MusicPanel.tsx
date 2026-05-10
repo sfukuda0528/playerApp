@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faGripVertical, faXmark, faMagnifyingGlass, faList, faPlus,
+  faGripVertical, faXmark, faMagnifyingGlass, faList, faPlus, faForwardStep,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
@@ -346,9 +346,10 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       aria-label={`${item.title}を次に再生`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
+                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
+                      <FontAwesomeIcon icon={faForwardStep} />
                       次に再生
                     </button>
                     <button
@@ -356,9 +357,10 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       aria-label={`${item.title}をキューに追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
+                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
+                      <FontAwesomeIcon icon={faPlus} />
                       キューに追加
                     </button>
                   </li>
