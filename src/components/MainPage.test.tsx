@@ -119,7 +119,7 @@ describe('MainPage - ホスト', () => {
 
   it('参加者数がヘッダーに表示される', async () => {
     renderAsHost()
-    await waitFor(() => expect(screen.getByText('👥 2/4')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('2/4')).toBeInTheDocument())
   })
 
   it('メンバータブに切り替えるとQRコードが表示される', async () => {
@@ -208,7 +208,7 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
     await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
-    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
   })
 
   it('メンバータブで非ホストに👑が付かない', async () => {
@@ -223,9 +223,9 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
     await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
-    await screen.findByText('👑 Alice')
+    await screen.findByText('Alice')
     const items = screen.getAllByRole('listitem')
-    expect(items[0]).toHaveTextContent('👑 Alice')
+    expect(items[0]).toHaveTextContent('Alice')
     expect(items[1]).toHaveTextContent('Bob')
   })
 
@@ -255,7 +255,7 @@ describe('MainPage - トースト', () => {
       storage_path: 'x.jpg', created_at: '',
     }
     act(() => { capturedPhotosInsert.onInsert?.(photo) })
-    expect(screen.getByText('📷 Aliceさんが写真を追加しました')).toBeInTheDocument()
+    expect(screen.getByText('Aliceさんが写真を追加しました')).toBeInTheDocument()
   })
 
   it('音楽追加時: 追加者名のトーストが表示される', async () => {
@@ -266,7 +266,7 @@ describe('MainPage - トースト', () => {
       url: 'https://youtu.be/abc', title: '', sort_order: 0, created_at: '',
     }
     act(() => { capturedMusicPanelProps.onMusicAdd?.(link) })
-    expect(screen.getByText('🎵 Bobさんが音楽を追加しました')).toBeInTheDocument()
+    expect(screen.getByText('Bobさんが音楽を追加しました')).toBeInTheDocument()
   })
 
   it('不明な auth_id の場合は "メンバー" と表示される', async () => {
@@ -277,7 +277,7 @@ describe('MainPage - トースト', () => {
       storage_path: 'x.jpg', created_at: '',
     }
     act(() => { capturedPhotosInsert.onInsert?.(photo) })
-    expect(screen.getByText('📷 メンバーさんが写真を追加しました')).toBeInTheDocument()
+    expect(screen.getByText('メンバーさんが写真を追加しました')).toBeInTheDocument()
   })
 
   it('トーストは3秒後に自動消去される', async () => {
@@ -289,8 +289,8 @@ describe('MainPage - トースト', () => {
       storage_path: 'x.jpg', created_at: '',
     }
     act(() => { capturedPhotosInsert.onInsert?.(photo) })
-    expect(screen.getByText('📷 Aliceさんが写真を追加しました')).toBeInTheDocument()
+    expect(screen.getByText('Aliceさんが写真を追加しました')).toBeInTheDocument()
     act(() => { vi.advanceTimersByTime(3000) })
-    expect(screen.queryByText('📷 Aliceさんが写真を追加しました')).not.toBeInTheDocument()
+    expect(screen.queryByText('Aliceさんが写真を追加しました')).not.toBeInTheDocument()
   })
 })
