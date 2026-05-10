@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useAddMusicLink, isValidMusicUrl } from './useAddMusicLink'
+import type { MusicLink } from '../types/session'
 
 const { mockGetUser, mockLinkInsert, mockLinkDelete, mockGetExtreme } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
@@ -125,5 +126,114 @@ describe('useAddMusicLink', () => {
     await act(async () => { ok = await result.current.deleteLink('ml-1') })
     expect(ok).toBe(true)
     expect(mockLinkDelete).toHaveBeenCalledOnce()
+  })
+
+  describe('addLinks', () => {
+    const makeLink = (id: string, sortOrder: number): MusicLink => ({
+      id,
+      session_id: 'sess-1',
+      added_by_auth_id: 'uid-1',
+      url: `https://youtu.be/${id}`,
+      title: `動画 ${id}`,
+      sort_order: sortOrder,
+      created_at: '2026-05-10T00:00:00Z',
+    })
+
+    it('tail: N件をバッチ INSERT し true を返す', async () => {
+      mockGetExtreme.mockResolvedValue({ data: { sort_order: 5000 } })
+      mockLinkInsert.mockResolvedValue({ error: null })
+      const items = [
+        { url: 'https://youtu.be/vid1', title: '動画1' },
+        { url: 'https://youtu.be/vid2', title: '動画2' },
+      ]
+      const { result } = renderHook(() => useAddMusicLink())
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.addLinks('sess-1', items, 'tail')
+      })
+      expect(ok).toBe(true)
+      const inserted = mockLinkInsert.mock.calls[0][0] as Array<{ sort_order: number; url: string }>
+      expect(inserted).toHaveLength(2)
+      expect(inserted[0]).toMatchObject({ url: 'https://youtu.be/vid1', sort_order: 6000 })
+      expect(inserted[1]).toMatchObject({ url: 'https://youtu.be/vid2', sort_order: 7000 })
+    })
+
+    it('tail: キューが空のとき sort_order を 0, 1000 で INSERT する', async () => {
+      mockGetExtreme.mockResolvedValue({ data: null })
+      mockLinkInsert.mockResolvedValue({ error: null })
+      const items = [
+        { url: 'https://youtu.be/vid1', title: '動画1' },
+        { url: 'https://youtu.be/vid2', title: '動画2' },
+      ]
+      const { result } = renderHook(() => useAddMusicLink())
+      await act(async () => {
+        await result.current.addLinks('sess-1', items, 'tail')
+      })
+      const inserted = mockLinkInsert.mock.calls[0][0] as Array<{ sort_order: number }>
+      expect(inserted[0].sort_order).toBe(0)
+      expect(inserted[1].sort_order).toBe(1000)
+    })
+
+    it('head: currentLink と nextLink の間に均等配置する', async () => {
+      mockLinkInsert.mockResolvedValue({ error: null })
+      const currentLink = makeLink('ml-1', 1000)
+      const nextLink = makeLink('ml-2', 4000)
+      const items = [
+        { url: 'https://youtu.be/vid1', title: '動画1' },
+        { url: 'https://youtu.be/vid2', title: '動画2' },
+      ]
+      // step = (4000 - 1000) / (2 + 1) = 1000
+      // item[0]: 1000 + 1000 * 1 = 2000
+      // item[1]: 1000 + 1000 * 2 = 3000
+      const { result } = renderHook(() => useAddMusicLink())
+      await act(async () => {
+        await result.current.addLinks('sess-1', items, 'head', currentLink, nextLink)
+      })
+      expect(mockGetExtreme).not.toHaveBeenCalled()
+      const inserted = mockLinkInsert.mock.calls[0][0] as Array<{ sort_order: number }>
+      expect(inserted[0].sort_order).toBe(2000)
+      expect(inserted[1].sort_order).toBe(3000)
+    })
+
+    it('head: nextLink なしのとき currentSort + 1000 * (i+1) で INSERT する', async () => {
+      mockLinkInsert.mockResolvedValue({ error: null })
+      const currentLink = makeLink('ml-1', 1000)
+      const items = [
+        { url: 'https://youtu.be/vid1', title: '動画1' },
+        { url: 'https://youtu.be/vid2', title: '動画2' },
+      ]
+      // step = 1000
+      // item[0]: 1000 + 1000 * 1 = 2000
+      // item[1]: 1000 + 1000 * 2 = 3000
+      const { result } = renderHook(() => useAddMusicLink())
+      await act(async () => {
+        await result.current.addLinks('sess-1', items, 'head', currentLink, undefined)
+      })
+      const inserted = mockLinkInsert.mock.calls[0][0] as Array<{ sort_order: number }>
+      expect(inserted[0].sort_order).toBe(2000)
+      expect(inserted[1].sort_order).toBe(3000)
+    })
+
+    it('空配列で INSERT を呼ばず false を返す', async () => {
+      const { result } = renderHook(() => useAddMusicLink())
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.addLinks('sess-1', [], 'tail')
+      })
+      expect(ok).toBe(false)
+      expect(mockLinkInsert).not.toHaveBeenCalled()
+    })
+
+    it('INSERT 失敗で false を返し error をセットする', async () => {
+      mockGetExtreme.mockResolvedValue({ data: { sort_order: 0 } })
+      mockLinkInsert.mockResolvedValue({ error: { message: 'DB error' } })
+      const { result } = renderHook(() => useAddMusicLink())
+      let ok: boolean | undefined
+      await act(async () => {
+        ok = await result.current.addLinks('sess-1', [{ url: 'https://youtu.be/v', title: 'v' }], 'tail')
+      })
+      expect(ok).toBe(false)
+      expect(result.current.error).toBeTruthy()
+    })
   })
 })
