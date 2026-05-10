@@ -17,6 +17,7 @@ import type { MusicLink } from '../types/session'
 interface Props {
   sessionId: string
   currentUserId: string
+  isHost?: boolean
   onMusicAdd?: (link: MusicLink) => void
 }
 
@@ -68,7 +69,7 @@ function SortableQueueItem({
   )
 }
 
-export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Props) {
+export default function MusicPanel({ sessionId, currentUserId, isHost = false, onMusicAdd }: Props) {
   const { links, optimisticReorder } = useMusicLinks(sessionId, {
     onInsert: (link, prevLinks) => {
       const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
@@ -233,28 +234,30 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
-        {(videoId || playlistId) ? (
-          <YouTubePlayer
-            key={currentLink?.id ?? 'empty'}
-            videoId={videoId ?? undefined}
-            playlistId={playlistId ?? undefined}
-            isPlaying={isPlaying}
-            onPlayToggle={() => setIsPlaying((p) => !p)}
-            onEnded={handleEnded}
-            onError={handleError}
-            onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
-            onNext={handleEnded}
-            hasPrev={links.length > 1}
-            hasNext={links.length > 1}
-          />
-        ) : (
-          <p className="text-camp-wheat/60 text-sm text-center py-2">曲がキューにありません</p>
-        )}
-        {skipToast && (
-          <p role="status" className="text-camp-wheat text-xs text-center">再生できないためスキップしました</p>
-        )}
-      </div>
+      {isHost && (
+        <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
+          {(videoId || playlistId) ? (
+            <YouTubePlayer
+              key={currentLink?.id ?? 'empty'}
+              videoId={videoId ?? undefined}
+              playlistId={playlistId ?? undefined}
+              isPlaying={isPlaying}
+              onPlayToggle={() => setIsPlaying((p) => !p)}
+              onEnded={handleEnded}
+              onError={handleError}
+              onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
+              onNext={handleEnded}
+              hasPrev={links.length > 1}
+              hasNext={links.length > 1}
+            />
+          ) : (
+            <p className="text-camp-wheat/60 text-sm text-center py-2">曲がキューにありません</p>
+          )}
+          {skipToast && (
+            <p role="status" className="text-camp-wheat text-xs text-center">再生できないためスキップしました</p>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         <div className="bg-camp-cream rounded-xl p-3">

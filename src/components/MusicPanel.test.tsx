@@ -155,19 +155,19 @@ describe('MusicPanel', () => {
 
   describe('キュー表示', () => {
     it('links が空のとき YouTubePlayer は表示されない', () => {
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
     })
 
     it('links があるとき YouTubePlayer に videoId が渡る', () => {
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-video-id', 'dQw4w9WgXcQ')
     })
 
     it('プレイリスト URL の link で playlistId が YouTubePlayer に渡る', () => {
       mockLinks.value = [playlistLink]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(mockYouTubePlayer).toHaveBeenCalledWith(
         expect.objectContaining({ playlistId: 'PLxxx', videoId: undefined }),
         undefined
@@ -505,7 +505,7 @@ describe('MusicPanel', () => {
 
     it('handleEnded で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
@@ -513,17 +513,17 @@ describe('MusicPanel', () => {
 
     it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
       mockLinks.value = [link1, link2]
-      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       mockLinks.value = [link2]
-      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
     })
 
     it('空キューに最初の曲が INSERT されたとき isPlaying が true になる', () => {
       mockLinks.value = []
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       mockLinks.value = [link1]
       act(() => { capturedOptions.onInsert?.(link1, []) })
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
@@ -531,7 +531,7 @@ describe('MusicPanel', () => {
 
     it('INSERT 到着（未再生）で isPlaying が true になる', () => {
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(false)
       act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
@@ -540,7 +540,7 @@ describe('MusicPanel', () => {
     it('INSERT 到着時: onMusicAdd コールバックを呼ぶ', () => {
       const onMusicAdd = vi.fn()
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" onMusicAdd={onMusicAdd} />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} onMusicAdd={onMusicAdd} />)
       act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(onMusicAdd).toHaveBeenCalledWith(link2)
     })
@@ -552,7 +552,7 @@ describe('MusicPanel', () => {
         sort_order: 0, created_at: '2026-04-26T10:02:00Z',
       }
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       // 初期状態: currentIndex=0, link1 が再生中
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
 
@@ -562,8 +562,8 @@ describe('MusicPanel', () => {
 
       // links も先頭にnewLinkが追加された状態に更新
       mockLinks.value = [newLink, link1, link2]
-      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
 
       // currentIndex=1 になっているので link1（index=1）が aria-current
       const items = screen.getAllByRole('listitem')
@@ -572,7 +572,7 @@ describe('MusicPanel', () => {
 
     it('onError 発火で deleteLink を呼ぶ', () => {
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
@@ -580,7 +580,7 @@ describe('MusicPanel', () => {
 
     it('onError 発火でスキップトーストが表示される', () => {
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
       expect(screen.getByRole('status')).toHaveTextContent('再生できないためスキップしました')
@@ -589,7 +589,7 @@ describe('MusicPanel', () => {
     it('スキップトーストは3秒後に消える', () => {
       vi.useFakeTimers()
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
       expect(screen.getByRole('status')).toBeInTheDocument()
@@ -607,6 +607,25 @@ describe('MusicPanel', () => {
       expect(
         tabsList.compareDocumentPosition(queueItem) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy()
+    })
+  })
+
+  describe('非ホスト（isHost=false）', () => {
+    it('links があっても YouTubePlayer が表示されない', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
+    })
+
+    it('検索タブが表示される', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.getByPlaceholderText('曲名・アーティスト名で検索')).toBeInTheDocument()
+    })
+
+    it('キューが表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.getByText('Never Gonna Give You Up')).toBeInTheDocument()
     })
   })
 })
