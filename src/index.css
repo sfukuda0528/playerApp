@@ -9,6 +9,17 @@
   --color-camp-wheat: #f0c896;
   --color-camp-dark: #3d2003;
   --color-camp-destructive: #c0392b;
+  --animate-slide-down: slide-down 300ms ease-out both;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 123, 57, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(224, 123, 57, 0.25); }
 }
 
 body {
