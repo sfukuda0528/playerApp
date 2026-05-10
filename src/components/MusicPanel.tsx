@@ -91,6 +91,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   const [searchQuery, setSearchQuery] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
+  const [skipToast, setSkipToast] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -178,6 +179,13 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
     await deleteLink(currentLink.id)
   }
 
+  const handleError = () => {
+    if (!currentLink) return
+    setSkipToast(true)
+    void deleteLink(currentLink.id)
+    setTimeout(() => setSkipToast(false), 3000)
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -226,6 +234,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
             isPlaying={isPlaying}
             onPlayToggle={() => setIsPlaying((p) => !p)}
             onEnded={handleEnded}
+            onError={handleError}
             onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
             onNext={handleEnded}
             hasPrev={links.length > 1}
@@ -233,6 +242,9 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
           />
         ) : (
           <p className="text-camp-wheat/60 text-sm text-center py-2">曲がキューにありません</p>
+        )}
+        {skipToast && (
+          <p role="status" className="text-camp-wheat text-xs text-center">再生できないためスキップしました</p>
         )}
       </div>
 
