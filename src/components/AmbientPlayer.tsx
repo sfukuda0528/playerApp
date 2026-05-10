@@ -6,18 +6,20 @@ interface Props {
 
 export default function AmbientPlayer({ videoId }: Props) {
   return (
-    <YouTube
-      videoId={videoId}
-      opts={{
-        width: '200',
-        height: '113',
-        playerVars: {
-          autoplay: 1,
-          loop: 1,
-          playlist: videoId,
-          controls: 0,
-        },
-      }}
-    />
+    <div className="flex justify-center">
+      <YouTube
+        videoId={videoId}
+        opts={{
+          width: '200',
+          height: '113',
+          playerVars: {
+            autoplay: 1,
+            loop: 1,
+            playlist: videoId,
+            controls: 0,
+          },
+        }}
+      />
+    </div>
   )
 }
