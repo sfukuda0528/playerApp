@@ -47,8 +47,11 @@ export default function MainPage() {
       showToast(faCamera, `${resolveName(photo.uploader_auth_id)}さんが写真を追加しました`),
   })
 
-  const handleMusicAdd = (link: MusicLink) =>
-    showToast(faMusic, `${resolveName(link.added_by_auth_id)}さんが音楽を追加しました`)
+  const handleMusicAdd = useCallback(
+    (link: MusicLink) =>
+      showToast(faMusic, `${resolveName(link.added_by_auth_id)}さんが音楽を追加しました`),
+    [showToast, resolveName]
+  )
 
   useEffect(() => {
     if (!toast) return

@@ -204,19 +204,21 @@ describe('MainPage - 参加者', () => {
     expect(screen.getByTestId('music-panel')).toBeInTheDocument()
   })
 
-  it('メンバータブでホストに👑が付く', async () => {
+  it('メンバータブでホストにcrownアイコンが付く', async () => {
     renderAsParticipant()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
     await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
     expect(await screen.findByText('Alice')).toBeInTheDocument()
   })
 
-  it('メンバータブで非ホストに👑が付かない', async () => {
+  it('メンバータブで非ホストにcrownアイコンが付かない', async () => {
     renderAsParticipant()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
     await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
     await screen.findByText('Bob')
-    expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
+    const items = screen.getAllByRole('listitem')
+    const bobItem = items[1]
+    expect(bobItem.querySelector('svg')).not.toBeInTheDocument()
   })
 
   it('メンバータブでホストが先頭に表示される', async () => {
