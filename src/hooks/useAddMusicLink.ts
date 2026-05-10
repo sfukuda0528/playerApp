@@ -110,6 +110,7 @@ export function useAddMusicLink() {
           ? (nextLink.sort_order - currentLink.sort_order) / (items.length + 1)
           : 1000
       } else {
+        // position='tail', or position='head' without a current song (treated as tail)
         const { data: extremeLink } = await supabase
           .from('music_links')
           .select('sort_order')
@@ -124,7 +125,7 @@ export function useAddMusicLink() {
       const rows = items.map((item, i) => ({
         session_id: sessionId,
         added_by_auth_id: user.id,
-        url: item.url,
+        url: normalizeMusicUrl(item.url),
         title: item.title,
         sort_order: baseSortOrder + step * (i + 1),
       }))
