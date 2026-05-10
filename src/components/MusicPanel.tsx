@@ -108,6 +108,13 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
       setIsPlaying(true)
       onMusicAdd?.(link)
     },
+    onUpdate: (prevLinks, newLinks) => {
+      const idx = currentIndexRef.current
+      const currentSongId = prevLinks[idx]?.id
+      if (!currentSongId) return
+      const newIdx = newLinks.findIndex(l => l.id === currentSongId)
+      if (newIdx !== -1 && newIdx !== idx) setCurrentIndex(newIdx)
+    },
   })
   const { addLink, addLinks, deleteLink, loading, error } = useAddMusicLink()
   const { reorder } = useReorderMusicLink()
@@ -121,6 +128,9 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
   const [urlInput, setUrlInput] = useState('')
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
+
+  const currentIndexRef = useRef(0)
+  useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
 
   const skipToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sensors = useSensors(useSensor(PointerSensor))

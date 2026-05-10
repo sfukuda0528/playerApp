@@ -4,13 +4,18 @@ import type { MusicLink } from '../types/session'
 
 export function useMusicLinks(
   sessionId: string,
-  options?: { onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void }
+  options?: {
+    onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void
+    onUpdate?: (prevLinks: MusicLink[], newLinks: MusicLink[]) => void
+  }
 ) {
   const [links, setLinks] = useState<MusicLink[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const onInsertRef = useRef(options?.onInsert)
+  const onUpdateRef = useRef(options?.onUpdate)
   useEffect(() => { onInsertRef.current = options?.onInsert })
+  useEffect(() => { onUpdateRef.current = options?.onUpdate })
 
   const linksRef = useRef<MusicLink[]>([])
   useEffect(() => { linksRef.current = links }, [links])
@@ -47,10 +52,11 @@ export function useMusicLinks(
         { event: 'UPDATE', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
         (payload) => {
           const updated = payload.new as MusicLink
-          setLinks((prev) =>
-            prev.map(l => l.id === updated.id ? updated : l)
-              .sort((a, b) => a.sort_order - b.sort_order)
-          )
+          const prevLinks = linksRef.current
+          const newLinks = prevLinks.map(l => l.id === updated.id ? updated : l)
+            .sort((a, b) => a.sort_order - b.sort_order)
+          setLinks(newLinks)
+          onUpdateRef.current?.(prevLinks, newLinks)
         }
       )
       .on(
