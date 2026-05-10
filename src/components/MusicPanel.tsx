@@ -256,134 +256,138 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-        <span className="text-camp-amber text-xs font-bold uppercase tracking-wider">キュー</span>
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <div className="bg-camp-cream rounded-xl p-3">
+          <Tabs defaultValue="search">
+            <TabsList className="w-full bg-camp-warm-white">
+              <TabsTrigger value="search" className="flex-1 text-xs">検索</TabsTrigger>
+              <TabsTrigger value="url" className="flex-1 text-xs">URL入力</TabsTrigger>
+            </TabsList>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
-            <ul className="flex flex-col gap-2">
-              {links.map((link, index) => (
-                <SortableQueueItem
-                  key={link.id}
-                  link={link}
-                  index={index}
-                  currentIndex={currentIndex}
-                  currentUserId={currentUserId}
-                  loading={loading}
-                  onDelete={() => handleDelete(link, index)}
+            <TabsContent value="search" className="flex flex-col gap-2 mt-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
+                  placeholder="曲名・アーティスト名で検索"
+                  className="flex-1 bg-camp-warm-white border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
                 />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
+                <button
+                  type="button"
+                  onClick={() => void search(searchQuery)}
+                  disabled={searchLoading || !searchQuery.trim()}
+                  className="bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
+                >
+                  🔍
+                </button>
+              </div>
+              {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
+              {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
+              <ul className="flex flex-col gap-1">
+                {results.map((item) => (
+                  <li
+                    key={item.videoId}
+                    className="flex items-center gap-2 rounded-lg px-2 py-1 bg-camp-warm-white border border-camp-wheat"
+                  >
+                    <img
+                      src={item.thumbnail}
+                      alt={item.title}
+                      className="w-12 h-9 object-cover rounded flex-shrink-0"
+                    />
+                    <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
+                    <button
+                      type="button"
+                      aria-label={`${item.title}を先頭に追加`}
+                      onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
+                      disabled={loading}
+                      className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
+                    >
+                      先頭に追加
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${item.title}を末尾に追加`}
+                      onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
+                      disabled={loading}
+                      className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
+                    >
+                      末尾に追加
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </TabsContent>
 
-        <Tabs defaultValue="search" className="mt-2">
-          <TabsList className="w-full bg-camp-cream">
-            <TabsTrigger value="search" className="flex-1 text-xs">検索</TabsTrigger>
-            <TabsTrigger value="url" className="flex-1 text-xs">URL入力</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="search" className="flex flex-col gap-2 mt-2">
-            <div className="flex gap-2">
+            <TabsContent value="url" className="flex flex-col gap-2 mt-2">
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
-                placeholder="曲名・アーティスト名で検索"
-                className="flex-1 bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
+                placeholder="YouTube / YouTube Music URL"
+                className="w-full bg-camp-warm-white border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
               />
-              <button
-                type="button"
-                onClick={() => void search(searchQuery)}
-                disabled={searchLoading || !searchQuery.trim()}
-                className="bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
-              >
-                🔍
-              </button>
-            </div>
-            {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
-            {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
-            <ul className="flex flex-col gap-1">
-              {results.map((item) => (
-                <li
-                  key={item.videoId}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1 bg-camp-cream border border-camp-wheat"
+              {titleLoading && (
+                <p className="text-camp-wheat text-xs">タイトル取得中...</p>
+              )}
+              {fetchedTitle && (
+                <p className="text-camp-dark text-xs truncate">タイトル: {fetchedTitle}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleAddFromUrl('head')}
+                  disabled={loading || !!playlistProgress || !urlInput.trim()}
+                  className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
                 >
-                  <img
-                    src={item.thumbnail}
-                    alt={item.title}
-                    className="w-12 h-9 object-cover rounded flex-shrink-0"
-                  />
-                  <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
-                  <button
-                    type="button"
-                    aria-label={`${item.title}を先頭に追加`}
-                    onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
-                    disabled={loading}
-                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
-                  >
-                    先頭に追加
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`${item.title}を末尾に追加`}
-                    onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
-                    disabled={loading}
-                    className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
-                  >
-                    末尾に追加
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </TabsContent>
+                  先頭に追加
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleAddFromUrl('tail')}
+                  disabled={loading || !!playlistProgress || !urlInput.trim()}
+                  className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
+                >
+                  末尾に追加
+                </button>
+              </div>
+              {playlistProgress && (
+                <p className="text-camp-wheat text-xs">
+                  {playlistProgress.phase === 'fetching'
+                    ? 'プレイリスト取得中...'
+                    : `${playlistProgress.total}件をキューに追加中...`}
+                </p>
+              )}
+              {(error ?? playlistError) && (
+                <p role="alert" className="text-camp-destructive text-xs">{error ?? playlistError}</p>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
 
-          <TabsContent value="url" className="flex flex-col gap-2 mt-2">
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
-              placeholder="YouTube / YouTube Music URL"
-              className="w-full bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
-            />
-            {titleLoading && (
-              <p className="text-camp-wheat text-xs">タイトル取得中...</p>
-            )}
-            {fetchedTitle && (
-              <p className="text-camp-dark text-xs truncate">タイトル: {fetchedTitle}</p>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => void handleAddFromUrl('head')}
-                disabled={loading || !!playlistProgress || !urlInput.trim()}
-                className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
-              >
-                先頭に追加
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleAddFromUrl('tail')}
-                disabled={loading || !!playlistProgress || !urlInput.trim()}
-                className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
-              >
-                末尾に追加
-              </button>
-            </div>
-            {playlistProgress && (
-              <p className="text-camp-wheat text-xs">
-                {playlistProgress.phase === 'fetching'
-                  ? 'プレイリスト取得中...'
-                  : `${playlistProgress.total}件をキューに追加中...`}
-              </p>
-            )}
-            {(error ?? playlistError) && (
-              <p role="alert" className="text-camp-destructive text-xs">{error ?? playlistError}</p>
-            )}
-          </TabsContent>
-        </Tabs>
+        <div className="bg-camp-warm-white border border-camp-wheat rounded-xl p-3 flex flex-col gap-2">
+          <span className="text-camp-amber text-xs font-bold uppercase tracking-wider">キュー</span>
+
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
+              <ul className="flex flex-col gap-2">
+                {links.map((link, index) => (
+                  <SortableQueueItem
+                    key={link.id}
+                    link={link}
+                    index={index}
+                    currentIndex={currentIndex}
+                    currentUserId={currentUserId}
+                    loading={loading}
+                    onDelete={() => handleDelete(link, index)}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        </div>
       </div>
     </div>
   )
