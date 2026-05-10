@@ -8,6 +8,7 @@ const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
   mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
+  mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -22,6 +23,9 @@ const {
   capturedOptions: { onInsert: undefined as ((link: MusicLink, prevLinks: MusicLink[]) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
   mockError: { value: null as string | null },
+  mockAddLinks: vi.fn(),
+  mockFetchPlaylistItems: vi.fn(),
+  mockPlaylistError: { value: null as string | null },
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
@@ -34,6 +38,7 @@ vi.mock('../hooks/useMusicLinks', () => ({
 vi.mock('../hooks/useAddMusicLink', () => ({
   useAddMusicLink: () => ({
     addLink: mockAddLink,
+    addLinks: mockAddLinks,
     deleteLink: mockDeleteLink,
     loading: false,
     error: mockError.value,
@@ -103,6 +108,13 @@ vi.mock('@dnd-kit/utilities', () => ({
   CSS: { Transform: { toString: () => '' } },
 }))
 
+vi.mock('../hooks/usePlaylistItems', () => ({
+  usePlaylistItems: () => ({
+    fetchPlaylistItems: mockFetchPlaylistItems,
+    error: mockPlaylistError.value,
+  }),
+}))
+
 const link1: MusicLink = {
   id: 'ml-1', session_id: 'sess-1', added_by_auth_id: 'uid-me',
   url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Never Gonna Give You Up',
@@ -128,6 +140,9 @@ describe('MusicPanel', () => {
     mockError.value = null
     capturedOptions.onInsert = undefined
     capturedOnDragEnd.fn = undefined
+    mockAddLinks.mockResolvedValue(true)
+    mockFetchPlaylistItems.mockResolvedValue([])
+    mockPlaylistError.value = null
     mockYouTubePlayer.mockImplementation(
       ({ videoId, isPlaying }: { videoId?: string; isPlaying: boolean }) => (
         <div data-testid="youtube-player" data-video-id={videoId} data-playing={String(isPlaying)} />
@@ -370,6 +385,116 @@ describe('MusicPanel', () => {
       await userEvent.type(input, 'https://youtu.be/abc')
       await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
       await waitFor(() => expect(input).toHaveValue(''))
+    })
+  })
+
+  describe('URL入力タブ - プレイリスト対応', () => {
+    const switchToUrlTab = async () => {
+      await userEvent.click(screen.getByRole('tab', { name: 'URL入力' }))
+    }
+
+    it('プレイリストURLで末尾に追加: fetchPlaylistItems を呼び addLinks を呼ぶ（addLink は呼ばない）', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([
+        { videoId: 'vid-1', title: '動画1' },
+        { videoId: 'vid-2', title: '動画2' },
+      ])
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await waitFor(() => expect(mockFetchPlaylistItems).toHaveBeenCalledWith('PLxxx'))
+      expect(mockAddLinks).toHaveBeenCalledWith(
+        'sess-1',
+        [
+          { url: 'https://www.youtube.com/watch?v=vid-1', title: '動画1' },
+          { url: 'https://www.youtube.com/watch?v=vid-2', title: '動画2' },
+        ],
+        'tail',
+        undefined,
+        undefined
+      )
+      expect(mockAddLink).not.toHaveBeenCalled()
+    })
+
+    it('プレイリスト取得中に「プレイリスト取得中...」を表示する', async () => {
+      let resolveItems!: (v: { videoId: string; title: string }[]) => void
+      mockFetchPlaylistItems.mockReturnValue(
+        new Promise(resolve => { resolveItems = resolve })
+      )
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      act(() => { void userEvent.click(screen.getByRole('button', { name: '末尾に追加' })) })
+      await waitFor(() =>
+        expect(screen.getByText('プレイリスト取得中...')).toBeInTheDocument()
+      )
+      await act(async () => { resolveItems([]) })
+    })
+
+    it('プレイリスト追加中に「N件をキューに追加中...」を表示する', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([
+        { videoId: 'vid-1', title: '動画1' },
+        { videoId: 'vid-2', title: '動画2' },
+      ])
+      let resolveLinks!: (v: boolean) => void
+      mockAddLinks.mockReturnValue(new Promise(resolve => { resolveLinks = resolve }))
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      act(() => { void userEvent.click(screen.getByRole('button', { name: '末尾に追加' })) })
+      await waitFor(() =>
+        expect(screen.getByText('2件をキューに追加中...')).toBeInTheDocument()
+      )
+      await act(async () => { resolveLinks(true) })
+    })
+
+    it('プレイリスト追加成功後: URL入力フィールドがクリアされる', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([{ videoId: 'vid-1', title: '動画1' }])
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
+      await userEvent.type(input, 'https://www.youtube.com/playlist?list=PLxxx')
+      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await waitFor(() => expect(input).toHaveValue(''))
+    })
+
+    it('プレイリストが空のとき error を表示する', async () => {
+      mockFetchPlaylistItems.mockImplementation(async () => {
+        mockPlaylistError.value = 'プレイリストに動画がありません'
+        return null
+      })
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('プレイリストに動画がありません')
+      )
+    })
+
+    it('watch?v=xxx&list=yyy は addLink を呼ぶ（プレイリスト展開しない）', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/watch?v=abc&list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await waitFor(() => expect(mockAddLink).toHaveBeenCalled())
+      expect(mockFetchPlaylistItems).not.toHaveBeenCalled()
     })
   })
 

@@ -9,6 +9,7 @@ import { useAddMusicLink } from '../hooks/useAddMusicLink'
 import { useReorderMusicLink } from '../hooks/useReorderMusicLink'
 import { useYouTubeSearch } from '../hooks/useYouTubeSearch'
 import { useYouTubeVideoTitle } from '../hooks/useYouTubeVideoTitle'
+import { usePlaylistItems } from '../hooks/usePlaylistItems'
 import YouTubePlayer from './YouTubePlayer'
 import { extractYouTubeId, extractPlaylistId } from '../utils/youtube'
 import type { MusicLink } from '../types/session'
@@ -79,15 +80,17 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
       onMusicAdd?.(link)
     },
   })
-  const { addLink, deleteLink, loading, error } = useAddMusicLink()
+  const { addLink, addLinks, deleteLink, loading, error } = useAddMusicLink()
   const { reorder } = useReorderMusicLink()
   const { results, loading: searchLoading, error: searchError, search } = useYouTubeSearch()
   const { title: fetchedTitle, loading: titleLoading, fetchTitle, clear: clearTitle } = useYouTubeVideoTitle()
+  const { fetchPlaylistItems, error: playlistError } = usePlaylistItems()
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [urlInput, setUrlInput] = useState('')
+  const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -112,6 +115,34 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   }
 
   const handleAddFromUrl = async (position: 'head' | 'tail') => {
+    const videoId = extractYouTubeId(urlInput)
+    const playlistId = extractPlaylistId(urlInput)
+
+    if (playlistId && !videoId) {
+      setPlaylistProgress({ phase: 'fetching', total: 0 })
+      const items = await fetchPlaylistItems(playlistId)
+      if (!items) {
+        setPlaylistProgress(null)
+        return
+      }
+      setPlaylistProgress({ phase: 'inserting', total: items.length })
+      const musicItems = items.map(item => ({
+        url: `https://www.youtube.com/watch?v=${item.videoId}`,
+        title: item.title,
+      }))
+      const nextLink = position === 'head' ? links[currentIndex + 1] : undefined
+      const ok = await addLinks(
+        sessionId,
+        musicItems,
+        position,
+        position === 'head' ? currentLink : undefined,
+        nextLink
+      )
+      setPlaylistProgress(null)
+      if (ok) setUrlInput('')
+      return
+    }
+
     const title = fetchedTitle ?? urlInput
     let ok: boolean
     if (position === 'head' && currentLink) {
@@ -266,21 +297,21 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                   <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
                   <button
                     type="button"
-                    aria-label={`${item.title}を次に再生`}
+                    aria-label={`${item.title}を先頭に追加`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                     disabled={loading}
                     className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    次に再生
+                    先頭に追加
                   </button>
                   <button
                     type="button"
-                    aria-label={`${item.title}をキューに追加`}
+                    aria-label={`${item.title}を末尾に追加`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                     disabled={loading}
                     className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    キューに追加
+                    末尾に追加
                   </button>
                 </li>
               ))}
@@ -309,7 +340,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                 disabled={loading || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
-                次に再生
+                先頭に追加
               </button>
               <button
                 type="button"
@@ -317,10 +348,19 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                 disabled={loading || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
-                キューに追加
+                末尾に追加
               </button>
             </div>
-            {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
+            {playlistProgress && (
+              <p className="text-camp-wheat text-xs">
+                {playlistProgress.phase === 'fetching'
+                  ? 'プレイリスト取得中...'
+                  : `${playlistProgress.total}件をキューに追加中...`}
+              </p>
+            )}
+            {(error ?? playlistError) && (
+              <p role="alert" className="text-camp-destructive text-xs">{error ?? playlistError}</p>
+            )}
           </TabsContent>
         </Tabs>
       </div>
