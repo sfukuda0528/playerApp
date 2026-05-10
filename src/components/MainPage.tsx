@@ -93,7 +93,7 @@ export default function MainPage() {
     'data-[state=active]:bg-transparent data-[state=active]:shadow-none'
 
   return (
-    <div className="flex flex-col h-screen bg-camp-cream">
+    <div className="flex flex-col h-dvh bg-camp-cream">
       <header className="bg-camp-brown px-4 py-3 flex items-center justify-between flex-shrink-0">
         <span className="text-camp-cream font-bold text-sm">🏕 CampCanvas</span>
         <span className="text-camp-cream text-xs opacity-80">

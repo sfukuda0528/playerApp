@@ -99,12 +99,30 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   }, [links.length, currentIndex])
 
   const handleAddFromSearch = async (videoId: string, title: string, position: 'head' | 'tail') => {
-    await addLink(sessionId, `https://www.youtube.com/watch?v=${videoId}`, title, position)
+    const url = `https://www.youtube.com/watch?v=${videoId}`
+    if (position === 'head' && currentLink) {
+      const nextLink = links[currentIndex + 1]
+      const sortOrder = nextLink
+        ? (currentLink.sort_order + nextLink.sort_order) / 2
+        : currentLink.sort_order + 1000
+      await addLink(sessionId, url, title, position, sortOrder)
+    } else {
+      await addLink(sessionId, url, title, position)
+    }
   }
 
   const handleAddFromUrl = async (position: 'head' | 'tail') => {
     const title = fetchedTitle ?? urlInput
-    const ok = await addLink(sessionId, urlInput, title, position)
+    let ok: boolean
+    if (position === 'head' && currentLink) {
+      const nextLink = links[currentIndex + 1]
+      const sortOrder = nextLink
+        ? (currentLink.sort_order + nextLink.sort_order) / 2
+        : currentLink.sort_order + 1000
+      ok = await addLink(sessionId, urlInput, title, position, sortOrder)
+    } else {
+      ok = await addLink(sessionId, urlInput, title, position)
+    }
     if (ok) {
       setUrlInput('')
       clearTitle()
@@ -177,7 +195,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
             onPlayToggle={() => setIsPlaying((p) => !p)}
             onEnded={handleEnded}
             onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
-            onNext={() => setCurrentIndex((prev) => (prev + 1) % links.length)}
+            onNext={handleEnded}
             hasPrev={links.length > 1}
             hasNext={links.length > 1}
           />
@@ -248,21 +266,21 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                   <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
                   <button
                     type="button"
-                    aria-label={`${item.title}を先頭に追加`}
+                    aria-label={`${item.title}を次に再生`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                     disabled={loading}
                     className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    先頭に追加
+                    次に再生
                   </button>
                   <button
                     type="button"
-                    aria-label={`${item.title}を末尾に追加`}
+                    aria-label={`${item.title}をキューに追加`}
                     onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                     disabled={loading}
                     className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
                   >
-                    末尾に追加
+                    キューに追加
                   </button>
                 </li>
               ))}
@@ -291,7 +309,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                 disabled={loading || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
-                先頭に追加
+                次に再生
               </button>
               <button
                 type="button"
@@ -299,7 +317,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
                 disabled={loading || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
-                末尾に追加
+                キューに追加
               </button>
             </div>
             {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
