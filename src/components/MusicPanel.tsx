@@ -324,7 +324,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               type="text"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              onBlur={() => { if (urlInput) void fetchTitle(urlInput) }}
+              onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
               placeholder="YouTube / YouTube Music URL"
               className="w-full bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2 text-sm text-camp-dark outline-none focus:border-camp-orange"
             />

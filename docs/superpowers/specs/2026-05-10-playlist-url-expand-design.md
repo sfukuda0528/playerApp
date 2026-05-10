@@ -64,7 +64,7 @@ addLinks(
 ```
 
 **sort_order 計算:**
-- `tail`: `tailSort + 1000 * i`（i = 0..N-1）
+- `tail`: `baseSortOrder + 1000 * (i + 1)`（baseSortOrder = 既存末尾の sort_order or -1000 if empty, i = 0..N-1）
 - `head`: `currentSort + step * (i + 1)`（i = 0..N-1）
   - nextLink あり: `step = (nextSort - currentSort) / (N + 1)`
   - nextLink なし: `step = 1000`
