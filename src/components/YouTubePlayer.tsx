@@ -36,7 +36,7 @@ export default function YouTubePlayer({
     : { autoplay: 0 }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 items-center">
       <YouTube
         videoId={videoId ?? ''}
         opts={{ width: '200', height: '113', playerVars }}
