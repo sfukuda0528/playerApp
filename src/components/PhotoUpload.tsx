@@ -1,4 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCamera, faDownload, faSpinner } from '@fortawesome/free-solid-svg-icons'
 import { supabase } from '../lib/supabase'
 import { useUploadPhoto } from '../hooks/useUploadPhoto'
 import type { Photo } from '../types/session'
@@ -74,7 +76,7 @@ export default function PhotoUpload({ sessionId, photos, currentUserId }: Props)
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center justify-center gap-2 bg-camp-orange text-white font-bold py-2.5 rounded-xl cursor-pointer">
-        📷 写真を追加
+        <FontAwesomeIcon icon={faCamera} />写真を追加
         <input
           type="file"
           accept="image/*"
@@ -90,7 +92,7 @@ export default function PhotoUpload({ sessionId, photos, currentUserId }: Props)
           disabled={sharing}
           className="flex items-center justify-center gap-2 bg-camp-brown text-camp-cream font-bold py-2.5 rounded-xl disabled:opacity-60"
         >
-          {sharing ? '⏳ 読み込み中...' : `💾 全写真を保存（${photos.length}枚）`}
+          {sharing ? <><FontAwesomeIcon icon={faSpinner} spin /> 読み込み中...</> : <><FontAwesomeIcon icon={faDownload} /> 全写真を保存（{photos.length}枚）</>}
         </button>
       )}
       {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
