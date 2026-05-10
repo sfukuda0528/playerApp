@@ -66,7 +66,8 @@ function SortableQueueItem({
         aria-label="並び替え"
         {...attributes}
         {...listeners}
-        className="cursor-grab flex-shrink-0 text-camp-brown/30 hover:text-camp-brown/60 transition-colors ml-1"
+        onContextMenu={(e) => e.preventDefault()}
+        className="cursor-grab flex-shrink-0 text-camp-brown/30 hover:text-camp-brown/60 transition-colors ml-1 touch-none select-none"
       >
         <FontAwesomeIcon icon={faGripVertical} className="text-sm" />
       </button>
@@ -228,6 +229,9 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
 
     const oldIndex = links.findIndex(l => l.id === active.id)
     const newIndex = links.findIndex(l => l.id === over.id)
+
+    if (newIndex < currentIndex) return
+
     const sorted = arrayMove(links, oldIndex, newIndex)
 
     optimisticReorder(sorted)
