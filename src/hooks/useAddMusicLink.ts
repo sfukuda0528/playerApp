@@ -20,7 +20,8 @@ export function useAddMusicLink() {
     sessionId: string,
     url: string,
     title: string,
-    position: 'head' | 'tail'
+    position: 'head' | 'tail',
+    customSortOrder?: number
   ): Promise<boolean> => {
     setError(null)
     const normalized = normalizeMusicUrl(url)
@@ -33,17 +34,22 @@ export function useAddMusicLink() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('認証が必要です')
 
-      const { data: extremeLink } = await supabase
-        .from('music_links')
-        .select('sort_order')
-        .eq('session_id', sessionId)
-        .order('sort_order', { ascending: position === 'head' })
-        .limit(1)
-        .maybeSingle()
+      let newSortOrder: number
+      if (customSortOrder !== undefined) {
+        newSortOrder = customSortOrder
+      } else {
+        const { data: extremeLink } = await supabase
+          .from('music_links')
+          .select('sort_order')
+          .eq('session_id', sessionId)
+          .order('sort_order', { ascending: position === 'head' })
+          .limit(1)
+          .maybeSingle()
 
-      const newSortOrder = extremeLink
-        ? (position === 'tail' ? extremeLink.sort_order + 1000 : extremeLink.sort_order - 1000)
-        : 0
+        newSortOrder = extremeLink
+          ? (position === 'tail' ? extremeLink.sort_order + 1000 : extremeLink.sort_order - 1000)
+          : 0
+      }
 
       const { error: insertError } = await supabase
         .from('music_links')
