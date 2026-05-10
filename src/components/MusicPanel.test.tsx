@@ -597,4 +597,16 @@ describe('MusicPanel', () => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
   })
+
+  describe('レイアウト順序', () => {
+    it('Tabsエリアがキューリストより前（上）に表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const tabsList = screen.getByRole('tablist')
+      const queueItem = screen.getByRole('listitem')
+      expect(
+        tabsList.compareDocumentPosition(queueItem) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy()
+    })
+  })
 })
