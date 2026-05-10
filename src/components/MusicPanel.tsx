@@ -343,23 +343,23 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                     <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
                     <button
                       type="button"
-                      aria-label={`${item.title}を先頭に追加`}
+                      aria-label={`${item.title}を次に再生`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                       disabled={loading}
                       className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      先頭
+                      次に再生
                     </button>
                     <button
                       type="button"
-                      aria-label={`${item.title}を末尾に追加`}
+                      aria-label={`${item.title}をキューに追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                       disabled={loading}
                       className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      末尾
+                      キューに追加
                     </button>
                   </li>
                 ))}
@@ -390,7 +390,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
                   <FontAwesomeIcon icon={faPlus} className="text-xs" />
-                  先頭に追加
+                  次に再生
                 </button>
                 <button
                   type="button"
@@ -400,7 +400,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
                   <FontAwesomeIcon icon={faPlus} className="text-xs" />
-                  末尾に追加
+                  キューに追加
                 </button>
               </div>
               {playlistProgress && (

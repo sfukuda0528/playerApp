@@ -305,12 +305,12 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/thumb.jpg')
     })
 
-    it('検索結果の「先頭に追加」ボタンで addLink を position=head で呼ぶ', async () => {
+    it('検索結果の「次に再生」ボタンで addLink を position=head で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -319,12 +319,12 @@ describe('MusicPanel', () => {
       )
     })
 
-    it('検索結果の「末尾に追加」ボタンで addLink を position=tail で呼ぶ', async () => {
+    it('検索結果の「キューに追加」ボタンで addLink を position=tail で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画をキューに追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -342,7 +342,7 @@ describe('MusicPanel', () => {
         return false
       })
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生' }))
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('追加に失敗しました')
@@ -377,27 +377,27 @@ describe('MusicPanel', () => {
       expect(screen.getByText(/取得されたタイトル/)).toBeInTheDocument()
     })
 
-    it('「先頭に追加」クリックで addLink を position=head で呼ぶ', async () => {
+    it('「次に再生」クリックで addLink を position=head で呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await switchToUrlTab()
       await userEvent.type(
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://youtu.be/abc'
       )
-      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '次に再生' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1', 'https://youtu.be/abc', expect.any(String), 'head'
       )
     })
 
-    it('「末尾に追加」クリックで addLink を position=tail で呼ぶ', async () => {
+    it('「キューに追加」クリックで addLink を position=tail で呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await switchToUrlTab()
       await userEvent.type(
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://youtu.be/abc'
       )
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1', 'https://youtu.be/abc', expect.any(String), 'tail'
       )
@@ -408,7 +408,7 @@ describe('MusicPanel', () => {
       await switchToUrlTab()
       const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
       await userEvent.type(input, 'https://youtu.be/abc')
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       await waitFor(() => expect(input).toHaveValue(''))
     })
   })
@@ -418,7 +418,7 @@ describe('MusicPanel', () => {
       await userEvent.click(screen.getByRole('tab', { name: 'URL入力' }))
     }
 
-    it('プレイリストURLで末尾に追加: fetchPlaylistItems を呼び addLinks を呼ぶ（addLink は呼ばない）', async () => {
+    it('プレイリストURLでキューに追加: fetchPlaylistItems を呼び addLinks を呼ぶ（addLink は呼ばない）', async () => {
       mockFetchPlaylistItems.mockResolvedValue([
         { videoId: 'vid-1', title: '動画1' },
         { videoId: 'vid-2', title: '動画2' },
@@ -429,7 +429,7 @@ describe('MusicPanel', () => {
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://www.youtube.com/playlist?list=PLxxx'
       )
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       await waitFor(() => expect(mockFetchPlaylistItems).toHaveBeenCalledWith('PLxxx'))
       expect(mockAddLinks).toHaveBeenCalledWith(
         'sess-1',
@@ -455,7 +455,7 @@ describe('MusicPanel', () => {
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://www.youtube.com/playlist?list=PLxxx'
       )
-      act(() => { void userEvent.click(screen.getByRole('button', { name: '末尾に追加' })) })
+      act(() => { void userEvent.click(screen.getByRole('button', { name: 'キューに追加' })) })
       await waitFor(() =>
         expect(screen.getByText('プレイリスト取得中...')).toBeInTheDocument()
       )
@@ -475,7 +475,7 @@ describe('MusicPanel', () => {
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://www.youtube.com/playlist?list=PLxxx'
       )
-      act(() => { void userEvent.click(screen.getByRole('button', { name: '末尾に追加' })) })
+      act(() => { void userEvent.click(screen.getByRole('button', { name: 'キューに追加' })) })
       await waitFor(() =>
         expect(screen.getByText('2件をキューに追加中...')).toBeInTheDocument()
       )
@@ -488,7 +488,7 @@ describe('MusicPanel', () => {
       await switchToUrlTab()
       const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
       await userEvent.type(input, 'https://www.youtube.com/playlist?list=PLxxx')
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       await waitFor(() => expect(input).toHaveValue(''))
     })
 
@@ -503,7 +503,7 @@ describe('MusicPanel', () => {
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://www.youtube.com/playlist?list=PLxxx'
       )
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('プレイリストに動画がありません')
@@ -517,7 +517,7 @@ describe('MusicPanel', () => {
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://www.youtube.com/watch?v=abc&list=PLxxx'
       )
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       await waitFor(() => expect(mockAddLink).toHaveBeenCalled())
       expect(mockFetchPlaylistItems).not.toHaveBeenCalled()
     })
@@ -573,7 +573,7 @@ describe('MusicPanel', () => {
     it('先頭に INSERT されたとき currentIndex が +1 される（再生中の曲が変わらない）', () => {
       const newLink: MusicLink = {
         id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-other',
-        url: 'https://youtu.be/new', title: '先頭に追加される曲',
+        url: 'https://youtu.be/new', title: '次に再生される曲',
         sort_order: 0, created_at: '2026-04-26T10:02:00Z',
       }
       mockLinks.value = [link1, link2]
@@ -582,7 +582,7 @@ describe('MusicPanel', () => {
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
 
       // newLink が先頭（sort_order=0）に挿入される
-      // prevLinks=[link1, link2], newLink を先頭に追加 → insertedAt=0 → currentIndex: 0→1
+      // prevLinks=[link1, link2], newLink を次に再生 → insertedAt=0 → currentIndex: 0→1
       act(() => { capturedOptions.onInsert?.(newLink, [link1, link2]) })
 
       // links も先頭にnewLinkが追加された状態に更新
