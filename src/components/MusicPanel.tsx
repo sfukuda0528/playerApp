@@ -3,6 +3,11 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import {
+  faGripVertical, faXmark, faMagnifyingGlass, faList, faPlus,
+} from '@fortawesome/free-solid-svg-icons'
+import { faYoutube } from '@fortawesome/free-brands-svg-icons'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
@@ -38,33 +43,54 @@ function SortableQueueItem({
   return (
     <li
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
       aria-current={isCurrent ? true : undefined}
-      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-        isCurrent
-          ? 'bg-camp-orange text-white'
-          : 'bg-camp-warm-white border border-camp-wheat text-camp-dark'
+      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm relative overflow-hidden transition-shadow duration-200 bg-white ${
+        isCurrent ? 'text-camp-dark' : 'text-camp-dark opacity-80'
       }`}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        ...(isCurrent
+          ? { boxShadow: '0 4px 14px rgba(124,74,30,0.16)', border: '1px solid rgba(224,123,57,0.3)' }
+          : { boxShadow: '0 2px 8px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.4)' }),
+      }}
     >
+      {isCurrent && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
+          style={{ background: 'linear-gradient(180deg, #e07b39, #c8954a)', animation: 'pulse-glow 2s ease-in-out infinite' }}
+        />
+      )}
       <button
         type="button"
         aria-label="並び替え"
         {...attributes}
         {...listeners}
-        className="cursor-grab flex-shrink-0 opacity-40 hover:opacity-80"
+        className="cursor-grab flex-shrink-0 text-camp-brown/30 hover:text-camp-brown/60 transition-colors ml-1"
       >
-        ⠿
+        <FontAwesomeIcon icon={faGripVertical} className="text-sm" />
       </button>
-      <span className="flex-1 truncate">{link.title || link.url}</span>
+      <span className={`flex-1 truncate text-sm ${isCurrent ? 'font-semibold' : ''}`}>
+        {link.title || link.url}
+      </span>
+      {isCurrent && (
+        <span
+          className="text-xs text-camp-orange px-2 py-0.5 rounded-md flex-shrink-0"
+          style={{ background: 'rgba(224,123,57,0.1)' }}
+        >
+          再生中
+        </span>
+      )}
       {link.added_by_auth_id === currentUserId && (
         <button
           type="button"
           aria-label="削除"
           onClick={onDelete}
           disabled={loading}
-          className="text-xs opacity-70 hover:opacity-100 flex-shrink-0"
+          className="text-camp-brown/30 hover:text-camp-brown/60 transition-colors flex-shrink-0 disabled:opacity-30"
         >
-          ✕
+          <FontAwesomeIcon icon={faXmark} className="text-sm" />
         </button>
       )}
     </li>
@@ -237,21 +263,30 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
   return (
     <div className="flex flex-col h-full">
       {isHost && (
-        <div className="bg-camp-dark px-4 py-4 flex flex-col gap-3">
+        <div
+          className="px-4 py-4 flex flex-col gap-3"
+          style={{ background: 'linear-gradient(160deg, #1a0800, #3d1c06)' }}
+        >
           {(videoId || playlistId) ? (
-            <YouTubePlayer
-              key={currentLink?.id ?? 'empty'}
-              videoId={videoId ?? undefined}
-              playlistId={playlistId ?? undefined}
-              isPlaying={isPlaying}
-              onPlayToggle={() => setIsPlaying((p) => !p)}
-              onEnded={handleEnded}
-              onError={handleError}
-              onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
-              onNext={handleEnded}
-              hasPrev={links.length > 1}
-              hasNext={links.length > 1}
-            />
+            <>
+              <div className="flex items-center gap-1.5 text-camp-cream/30 text-xs">
+                <FontAwesomeIcon icon={faYoutube} className="text-red-400/60 text-sm" />
+                <span className="truncate">{links[currentIndex]?.title || '読み込み中...'}</span>
+              </div>
+              <YouTubePlayer
+                key={currentLink?.id ?? 'empty'}
+                videoId={videoId ?? undefined}
+                playlistId={playlistId ?? undefined}
+                isPlaying={isPlaying}
+                onPlayToggle={() => setIsPlaying((p) => !p)}
+                onEnded={handleEnded}
+                onError={handleError}
+                onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
+                onNext={handleEnded}
+                hasPrev={links.length > 1}
+                hasNext={links.length > 1}
+              />
+            </>
           ) : (
             <AmbientPlayer videoId={getAmbientVideoId()} />
           )}
@@ -262,7 +297,10 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
       )}
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        <div className="bg-camp-cream rounded-xl p-3">
+        <div
+          className="bg-white rounded-xl p-3"
+          style={{ boxShadow: '0 2px 10px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.35)' }}
+        >
           <Tabs defaultValue="search">
             <TabsList className="w-full bg-camp-warm-white">
               <TabsTrigger value="search" className="flex-1 text-xs">検索</TabsTrigger>
@@ -277,29 +315,32 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
                   placeholder="曲名・アーティスト名で検索"
-                  className="flex-1 bg-camp-warm-white border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
+                  className="flex-1 bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
                 />
                 <button
                   type="button"
+                  aria-label="検索"
                   onClick={() => void search(searchQuery)}
                   disabled={searchLoading || !searchQuery.trim()}
-                  className="bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
+                  className="text-white text-sm font-bold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150"
+                  style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
-                  🔍
+                  <FontAwesomeIcon icon={faMagnifyingGlass} />
                 </button>
               </div>
               {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
               {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-1.5">
                 {results.map((item) => (
                   <li
                     key={item.videoId}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1 bg-camp-warm-white border border-camp-wheat"
+                    className="flex items-center gap-2 rounded-xl px-2 py-2 bg-white active:shadow-md transition-shadow duration-150"
+                    style={{ boxShadow: '0 2px 8px rgba(124,74,30,0.09)', border: '1px solid rgba(240,200,150,0.35)' }}
                   >
                     <img
                       src={item.thumbnail}
                       alt={item.title}
-                      className="w-12 h-9 object-cover rounded flex-shrink-0"
+                      className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
                     />
                     <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
                     <button
@@ -307,18 +348,20 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       aria-label={`${item.title}を先頭に追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                       disabled={loading}
-                      className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
+                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
+                      style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      先頭に追加
+                      先頭
                     </button>
                     <button
                       type="button"
                       aria-label={`${item.title}を末尾に追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                       disabled={loading}
-                      className="text-xs bg-camp-orange text-white font-bold px-2 py-1 rounded hover:bg-camp-orange/80 disabled:opacity-40 flex-shrink-0"
+                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150"
+                      style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
-                      末尾に追加
+                      末尾
                     </button>
                   </li>
                 ))}
@@ -332,7 +375,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                 onChange={(e) => setUrlInput(e.target.value)}
                 onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
                 placeholder="YouTube / YouTube Music URL"
-                className="w-full bg-camp-warm-white border border-camp-wheat rounded-lg px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange"
+                className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
               />
               {titleLoading && (
                 <p className="text-camp-wheat text-xs">タイトル取得中...</p>
@@ -345,16 +388,20 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                   type="button"
                   onClick={() => void handleAddFromUrl('head')}
                   disabled={loading || !!playlistProgress || !urlInput.trim()}
-                  className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
+                  className="flex-1 text-white text-sm font-bold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
                   先頭に追加
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleAddFromUrl('tail')}
                   disabled={loading || !!playlistProgress || !urlInput.trim()}
-                  className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
+                  className="flex-1 text-white text-sm font-bold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center justify-center gap-1.5"
+                  style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                 >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
                   末尾に追加
                 </button>
               </div>
@@ -372,8 +419,14 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
           </Tabs>
         </div>
 
-        <div className="bg-camp-warm-white border border-camp-wheat rounded-xl p-3 flex flex-col gap-2">
-          <span className="text-camp-amber text-xs font-bold uppercase tracking-wider">キュー</span>
+        <div
+          className="rounded-xl p-3 flex flex-col gap-2"
+          style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
+        >
+          <span className="text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <FontAwesomeIcon icon={faList} className="text-xs" />
+            キュー
+          </span>
 
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>

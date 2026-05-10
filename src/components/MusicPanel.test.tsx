@@ -286,7 +286,7 @@ describe('MusicPanel', () => {
     it('検索ボタンクリックで search を呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await userEvent.type(screen.getByPlaceholderText('曲名・アーティスト名で検索'), 'テスト')
-      await userEvent.click(screen.getByRole('button', { name: '🔍' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索' }))
       expect(mockSearch).toHaveBeenCalledWith('テスト')
     })
 
