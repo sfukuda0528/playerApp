@@ -11,7 +11,9 @@ import { useYouTubeSearch } from '../hooks/useYouTubeSearch'
 import { useYouTubeVideoTitle } from '../hooks/useYouTubeVideoTitle'
 import { usePlaylistItems } from '../hooks/usePlaylistItems'
 import YouTubePlayer from './YouTubePlayer'
+import AmbientPlayer from './AmbientPlayer'
 import { extractYouTubeId, extractPlaylistId } from '../utils/youtube'
+import { getAmbientVideoId } from '../utils/ambient'
 import type { MusicLink } from '../types/session'
 
 interface Props {
@@ -251,7 +253,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
               hasNext={links.length > 1}
             />
           ) : (
-            <p className="text-camp-wheat/60 text-sm text-center py-2">曲がキューにありません</p>
+            <AmbientPlayer videoId={getAmbientVideoId()} />
           )}
           {skipToast && (
             <p role="status" className="text-camp-wheat text-xs text-center">再生できないためスキップしました</p>

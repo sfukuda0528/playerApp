@@ -9,6 +9,7 @@ const {
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
   mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
   mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
+  mockAmbientPlayer,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -26,6 +27,7 @@ const {
   mockAddLinks: vi.fn(),
   mockFetchPlaylistItems: vi.fn(),
   mockPlaylistError: { value: null as string | null },
+  mockAmbientPlayer: vi.fn(),
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
@@ -70,6 +72,10 @@ vi.mock('../hooks/useYouTubeVideoTitle', () => ({
 
 vi.mock('./YouTubePlayer', () => ({
   default: mockYouTubePlayer,
+}))
+
+vi.mock('./AmbientPlayer', () => ({
+  default: mockAmbientPlayer,
 }))
 
 vi.mock('@dnd-kit/core', () => ({
@@ -148,6 +154,9 @@ describe('MusicPanel', () => {
         <div data-testid="youtube-player" data-video-id={videoId} data-playing={String(isPlaying)} />
       )
     )
+    mockAmbientPlayer.mockImplementation(({ videoId }: { videoId: string }) => (
+      <div data-testid="ambient-player" data-video-id={videoId} />
+    ))
     mockAddLink.mockResolvedValue(true)
     mockDeleteLink.mockResolvedValue(true)
     mockReorder.mockResolvedValue(true)
@@ -212,6 +221,22 @@ describe('MusicPanel', () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await userEvent.click(screen.getByRole('button', { name: '削除' }))
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('isHost=true かつ links が空のとき AmbientPlayer が表示される', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      expect(screen.getByTestId('ambient-player')).toBeInTheDocument()
+    })
+
+    it('isHost=true かつ links があるとき AmbientPlayer は表示されない', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
+    })
+
+    it('isHost=false かつ links が空のとき AmbientPlayer は表示されない', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
     })
   })
 
