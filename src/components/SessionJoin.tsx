@@ -37,7 +37,7 @@ export default function SessionJoin() {
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="ABC123"
+              placeholder="123456"
               maxLength={6}
               className="bg-camp-cream border border-camp-wheat rounded-lg px-3 py-2.5 text-camp-dark text-sm tracking-widest placeholder:text-camp-wheat/80 outline-none focus:border-camp-orange uppercase"
             />
