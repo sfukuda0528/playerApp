@@ -565,5 +565,33 @@ describe('MusicPanel', () => {
       const items = screen.getAllByRole('listitem')
       expect(items[1]).toHaveAttribute('aria-current', 'true')
     })
+
+    it('onError 発火で deleteLink を呼ぶ', () => {
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('onError 発火でスキップトーストが表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(screen.getByRole('status')).toHaveTextContent('再生できないためスキップしました')
+    })
+
+    it('スキップトーストは3秒後に消える', () => {
+      vi.useFakeTimers()
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(screen.getByRole('status')).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(3000) })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      vi.useRealTimers()
+    })
   })
 })
