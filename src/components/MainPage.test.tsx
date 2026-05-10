@@ -218,7 +218,7 @@ describe('MainPage - 参加者', () => {
     await screen.findByText('Bob')
     const items = screen.getAllByRole('listitem')
     const bobItem = items[1]
-    expect(bobItem.querySelector('svg')).not.toBeInTheDocument()
+    expect(bobItem.querySelector('svg')).toBeNull()
   })
 
   it('メンバータブでホストが先頭に表示される', async () => {
