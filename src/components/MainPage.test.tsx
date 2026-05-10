@@ -20,7 +20,10 @@ const {
   mockGetUser: vi.fn(),
   realtimeCallbacks: { sessionStatus: null as ((payload: { new: { id: string; status: string } }) => void) | null },
   capturedPhotosInsert: { onInsert: undefined as ((photo: Photo) => void) | undefined },
-  capturedMusicPanelProps: { onMusicAdd: undefined as ((link: MusicLink) => void) | undefined },
+  capturedMusicPanelProps: {
+    onMusicAdd: undefined as ((link: MusicLink) => void) | undefined,
+    isHost: undefined as boolean | undefined,
+  },
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -54,8 +57,9 @@ vi.mock('./PhotoUpload', () => ({
   default: () => <div data-testid="photo-upload" />,
 }))
 vi.mock('./MusicPanel', () => ({
-  default: ({ onMusicAdd }: { onMusicAdd?: (link: MusicLink) => void }) => {
+  default: ({ onMusicAdd, isHost }: { onMusicAdd?: (link: MusicLink) => void; isHost?: boolean }) => {
     capturedMusicPanelProps.onMusicAdd = onMusicAdd
+    capturedMusicPanelProps.isHost = isHost
     return <div data-testid="music-panel" />
   },
 }))
@@ -154,6 +158,11 @@ describe('MainPage - ホスト', () => {
     realtimeCallbacks.sessionStatus!({ new: { id: 'other-sess', status: 'ended' } })
     expect(mockNavigate).not.toHaveBeenCalled()
   })
+
+  it('MusicPanel に isHost=true が渡る', async () => {
+    renderAsHost()
+    await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(true))
+  })
 })
 
 describe('MainPage - 参加者', () => {
@@ -216,6 +225,11 @@ describe('MainPage - 参加者', () => {
     const items = screen.getAllByRole('listitem')
     expect(items[0]).toHaveTextContent('👑 Alice')
     expect(items[1]).toHaveTextContent('Bob')
+  })
+
+  it('MusicPanel に isHost=false が渡る', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(false))
   })
 })
 

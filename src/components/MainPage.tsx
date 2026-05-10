@@ -124,6 +124,7 @@ export default function MainPage() {
             <MusicPanel
               sessionId={sessionId!}
               currentUserId={currentUserId}
+              isHost={isHost}
               onMusicAdd={handleMusicAdd}
             />
           )}
