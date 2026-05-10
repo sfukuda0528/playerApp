@@ -300,9 +300,9 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
           style={{ boxShadow: '0 2px 10px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.35)' }}
         >
           <Tabs defaultValue="search">
-            <TabsList className="w-full bg-camp-warm-white">
-              <TabsTrigger value="search" className="flex-1 text-xs">検索</TabsTrigger>
-              <TabsTrigger value="url" className="flex-1 text-xs">URL入力</TabsTrigger>
+            <TabsList className="w-full bg-camp-wheat/30">
+              <TabsTrigger value="search" className="flex-1 text-xs text-camp-brown/60 data-[state=active]:bg-camp-orange data-[state=active]:text-white data-[state=active]:shadow">検索</TabsTrigger>
+              <TabsTrigger value="url" className="flex-1 text-xs text-camp-brown/60 data-[state=active]:bg-camp-orange data-[state=active]:text-white data-[state=active]:shadow">URL入力</TabsTrigger>
             </TabsList>
 
             <TabsContent value="search" className="flex flex-col gap-2 mt-2">
