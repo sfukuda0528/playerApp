@@ -1,6 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MusicPanel from './MusicPanel'
 import type { MusicLink } from '../types/session'
 
@@ -499,6 +499,10 @@ describe('MusicPanel', () => {
   })
 
   describe('再生状態', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
     it('handleEnded で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1, link2]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
@@ -591,7 +595,6 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('status')).toBeInTheDocument()
       act(() => { vi.advanceTimersByTime(3000) })
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
-      vi.useRealTimers()
     })
   })
 })
