@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
@@ -93,6 +93,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
 
+  const skipToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sensors = useSensors(useSensor(PointerSensor))
 
   useEffect(() => {
@@ -101,6 +102,12 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
       setCurrentIndex(0)
     }
   }, [links.length, currentIndex])
+
+  useEffect(() => {
+    return () => {
+      if (skipToastTimerRef.current) clearTimeout(skipToastTimerRef.current)
+    }
+  }, [])
 
   const handleAddFromSearch = async (videoId: string, title: string, position: 'head' | 'tail') => {
     const url = `https://www.youtube.com/watch?v=${videoId}`
@@ -181,9 +188,10 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
 
   const handleError = () => {
     if (!currentLink) return
+    if (skipToastTimerRef.current) clearTimeout(skipToastTimerRef.current)
     setSkipToast(true)
     void deleteLink(currentLink.id)
-    setTimeout(() => setSkipToast(false), 3000)
+    skipToastTimerRef.current = setTimeout(() => setSkipToast(false), 3000)
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
