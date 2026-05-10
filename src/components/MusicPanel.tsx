@@ -44,13 +44,11 @@ function SortableQueueItem({
     <li
       ref={setNodeRef}
       aria-current={isCurrent ? true : undefined}
-      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm relative overflow-hidden transition-shadow duration-200 bg-white ${
-        isCurrent ? 'text-camp-dark' : 'text-camp-dark opacity-80'
-      }`}
+      className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm relative overflow-hidden transition-shadow duration-200 bg-white text-camp-dark`}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.5 : isCurrent ? 1 : 0.8,
         ...(isCurrent
           ? { boxShadow: '0 4px 14px rgba(124,74,30,0.16)', border: '1px solid rgba(224,123,57,0.3)' }
           : { boxShadow: '0 2px 8px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.4)' }),
