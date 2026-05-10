@@ -131,6 +131,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
         title: item.title,
       }))
       const nextLink = position === 'head' ? links[currentIndex + 1] : undefined
+      // position='head' with empty queue: currentLink is undefined, addLinks falls back to tail
       const ok = await addLinks(
         sessionId,
         musicItems,
@@ -337,7 +338,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               <button
                 type="button"
                 onClick={() => void handleAddFromUrl('head')}
-                disabled={loading || !urlInput.trim()}
+                disabled={loading || !!playlistProgress || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
                 先頭に追加
@@ -345,7 +346,7 @@ export default function MusicPanel({ sessionId, currentUserId, onMusicAdd }: Pro
               <button
                 type="button"
                 onClick={() => void handleAddFromUrl('tail')}
-                disabled={loading || !urlInput.trim()}
+                disabled={loading || !!playlistProgress || !urlInput.trim()}
                 className="flex-1 bg-camp-orange text-white text-sm font-bold px-3 py-2 rounded-lg disabled:opacity-40"
               >
                 末尾に追加
