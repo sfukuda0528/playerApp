@@ -71,6 +71,16 @@ describe('useParticipants', () => {
     expect(result.current.participants[1].name).toBe('Bob')
   })
 
+  it('Realtime INSERT: onInsertコールバックに新規参加者を渡す', async () => {
+    const onInsert = vi.fn()
+    renderHook(() => useParticipants('sess-1', { onInsert }))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalled())
+
+    act(() => { insertHandler({ new: bob }) })
+
+    expect(onInsert).toHaveBeenCalledWith(bob)
+  })
+
   it('Realtime DELETE: 削除された参加者をリストから除く', async () => {
     mockInitialFetch.mockResolvedValue({ data: [alice, bob], error: null })
     const { result } = renderHook(() => useParticipants('sess-1'))

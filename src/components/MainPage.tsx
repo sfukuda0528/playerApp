@@ -27,16 +27,22 @@ export default function MainPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [kickingParticipantId, setKickingParticipantId] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ icon: IconDefinition; message: string; id: number } | null>(null)
+  const toastIdRef = useRef(0)
+  const showToast = useCallback((icon: IconDefinition, message: string) => {
+    const id = ++toastIdRef.current
+    setToast({ icon, message, id })
+  }, [])
   const {
     participants,
     loading: participantsLoading,
     error: participantsError,
     removeParticipant,
-  } = useParticipants(sessionId ?? '')
+  } = useParticipants(sessionId ?? '', {
+    onInsert: (participant) => showToast(faUsers, `${participant.name}さんが参加しました`),
+  })
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
-  const [toast, setToast] = useState<{ icon: IconDefinition; message: string; id: number } | null>(null)
-  const toastIdRef = useRef(0)
 
   const MAX_PARTICIPANTS = 4
 
@@ -44,11 +50,6 @@ export default function MainPage() {
     (authId: string) => participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー',
     [participants]
   )
-
-  const showToast = useCallback((icon: IconDefinition, message: string) => {
-    const id = ++toastIdRef.current
-    setToast({ icon, message, id })
-  }, [])
 
   const { photos } = usePhotos(sessionId!, {
     onInsert: (photo: Photo) =>

@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Participant } from '../types/session'
 
-export function useParticipants(sessionId: string) {
+export function useParticipants(
+  sessionId: string,
+  options?: { onInsert?: (participant: Participant) => void }
+) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
+  const onInsertRef = useRef(options?.onInsert)
+  useEffect(() => { onInsertRef.current = options?.onInsert })
 
   const removeParticipant = useCallback((participantId: string) => {
     setParticipants((prev) => prev.filter((p) => p.id !== participantId))
@@ -42,7 +47,9 @@ export function useParticipants(sessionId: string) {
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          setParticipants((prev) => [...prev, payload.new as Participant])
+          const newParticipant = payload.new as Participant
+          setParticipants((prev) => [...prev, newParticipant])
+          onInsertRef.current?.(newParticipant)
         }
       )
       .on(

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MainPage from './MainPage'
-import type { Photo, MusicLink, Session } from '../types/session'
+import type { Photo, MusicLink, Participant, Session } from '../types/session'
 import { loadLastSession, saveLastSession } from '../utils/lastSession'
 
 const {
@@ -17,6 +17,7 @@ const {
   mockRemoveParticipant,
   realtimeCallbacks,
   capturedPhotosInsert,
+  capturedParticipantsInsert,
   capturedMusicPanelProps,
 } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -32,6 +33,9 @@ const {
   ],
   realtimeCallbacks: { sessionStatus: null as ((payload: { new: { id: string; status: string } }) => void) | null },
   capturedPhotosInsert: { onInsert: undefined as ((photo: Photo) => void) | undefined },
+  capturedParticipantsInsert: {
+    onInsert: undefined as ((participant: Participant) => void) | undefined,
+  },
   capturedMusicPanelProps: {
     onMusicAdd: undefined as ((link: MusicLink) => void) | undefined,
     isHost: undefined as boolean | undefined,
@@ -52,12 +56,15 @@ vi.mock('../hooks/usePhotos', () => ({
   },
 }))
 vi.mock('../hooks/useParticipants', () => ({
-  useParticipants: () => ({
-    participants: mockParticipants,
-    loading: false,
-    error: null,
-    removeParticipant: mockRemoveParticipant,
-  }),
+  useParticipants: (_sessionId: string, options?: { onInsert?: (participant: Participant) => void }) => {
+    capturedParticipantsInsert.onInsert = options?.onInsert
+    return {
+      participants: mockParticipants,
+      loading: false,
+      error: null,
+      removeParticipant: mockRemoveParticipant,
+    }
+  },
 }))
 vi.mock('qrcode', () => ({
   default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,mock') },
@@ -137,6 +144,7 @@ describe('MainPage - ホスト', () => {
       { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     )
     capturedPhotosInsert.onInsert = undefined
+    capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
     localStorage.clear()
@@ -250,6 +258,7 @@ describe('MainPage - 参加者', () => {
       { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     )
     capturedPhotosInsert.onInsert = undefined
+    capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
     mockMembershipCheck.mockResolvedValue({ data: [{ id: 'p-2' }], error: null })
@@ -380,6 +389,7 @@ describe('MainPage - トースト', () => {
       { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     )
     capturedPhotosInsert.onInsert = undefined
+    capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
   })
@@ -403,6 +413,23 @@ describe('MainPage - トースト', () => {
     }
     act(() => { capturedMusicPanelProps.onMusicAdd?.(link) })
     expect(screen.getByText('Bobさんが音楽を追加しました')).toBeInTheDocument()
+  })
+
+  it('メンバー参加時: 参加者名のトーストが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+
+    act(() => {
+      capturedParticipantsInsert.onInsert?.({
+        id: 'p-3',
+        auth_id: 'uid-carol',
+        name: 'Carol',
+        session_id: 'sess-1',
+        joined_at: '',
+      })
+    })
+
+    expect(screen.getByText('Carolさんが参加しました')).toBeInTheDocument()
   })
 
   it('不明な auth_id の場合は "メンバー" と表示される', async () => {
