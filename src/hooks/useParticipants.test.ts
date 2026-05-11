@@ -82,6 +82,34 @@ describe('useParticipants', () => {
     expect(result.current.participants[0].name).toBe('Alice')
   })
 
+  it('removeParticipant: 指定した参加者を即座にリストから除く', async () => {
+    mockInitialFetch.mockResolvedValue({ data: [alice, bob], error: null })
+    const { result } = renderHook(() => useParticipants('sess-1'))
+    await waitFor(() => expect(result.current.participants).toHaveLength(2))
+
+    act(() => { result.current.removeParticipant('p-2') })
+
+    await waitFor(() => expect(result.current.participants).toHaveLength(1))
+    expect(result.current.participants[0].name).toBe('Alice')
+  })
+
+  it('初期取得中は loading=true、取得後は false を返す', async () => {
+    const { result } = renderHook(() => useParticipants('sess-1'))
+
+    expect(result.current.loading).toBe(true)
+    await waitFor(() => expect(result.current.loading).toBe(false))
+  })
+
+  it('初期取得エラーを返す', async () => {
+    const fetchError = new Error('fetch failed')
+    mockInitialFetch.mockResolvedValue({ data: null, error: fetchError })
+
+    const { result } = renderHook(() => useParticipants('sess-1'))
+
+    await waitFor(() => expect(result.current.error).toBe(fetchError))
+    expect(result.current.loading).toBe(false)
+  })
+
   it('アンマウント時: チャンネルを削除する', () => {
     const { unmount } = renderHook(() => useParticipants('sess-1'))
     unmount()

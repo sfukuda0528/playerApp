@@ -27,7 +27,12 @@ export default function MainPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [kickingParticipantId, setKickingParticipantId] = useState<string | null>(null)
-  const { participants } = useParticipants(sessionId ?? '')
+  const {
+    participants,
+    loading: participantsLoading,
+    error: participantsError,
+    removeParticipant,
+  } = useParticipants(sessionId ?? '')
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
   const [toast, setToast] = useState<{ icon: IconDefinition; message: string; id: number } | null>(null)
@@ -69,6 +74,15 @@ export default function MainPage() {
       setIsHost(session?.host_auth_id === user.id)
     })
   }, [session])
+
+  useEffect(() => {
+    if (participantsLoading || participantsError || !currentUserId || isHost) return
+    const isStillParticipant = participants.some((p) => p.auth_id === currentUserId)
+    if (!isStillParticipant) {
+      clearLastSession()
+      navigate('/')
+    }
+  }, [participantsLoading, participantsError, currentUserId, isHost, participants, navigate])
 
   useEffect(() => {
     if (!session?.code) return
@@ -126,7 +140,9 @@ export default function MainPage() {
     setKickingParticipantId(null)
     if (error) {
       console.error('Failed to kick participant:', error)
+      return
     }
+    removeParticipant(participantId)
   }
 
   const tabTriggerClass =

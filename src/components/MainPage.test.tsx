@@ -12,6 +12,8 @@ const {
   mockRemoveChannel,
   mockGetUser,
   mockRpc,
+  mockParticipants,
+  mockRemoveParticipant,
   realtimeCallbacks,
   capturedPhotosInsert,
   capturedMusicPanelProps,
@@ -21,6 +23,11 @@ const {
   mockRemoveChannel: vi.fn(),
   mockGetUser: vi.fn(),
   mockRpc: vi.fn(),
+  mockRemoveParticipant: vi.fn(),
+  mockParticipants: [
+    { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+  ],
   realtimeCallbacks: { sessionStatus: null as ((payload: { new: { id: string; status: string } }) => void) | null },
   capturedPhotosInsert: { onInsert: undefined as ((photo: Photo) => void) | undefined },
   capturedMusicPanelProps: {
@@ -44,10 +51,10 @@ vi.mock('../hooks/usePhotos', () => ({
 }))
 vi.mock('../hooks/useParticipants', () => ({
   useParticipants: () => ({
-    participants: [
-      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
-      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
-    ],
+    participants: mockParticipants,
+    loading: false,
+    error: null,
+    removeParticipant: mockRemoveParticipant,
   }),
 }))
 vi.mock('qrcode', () => ({
@@ -99,7 +106,7 @@ function renderAsHost() {
 }
 
 function renderAsParticipant() {
-  mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-other' } } })
+  mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } } })
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/session/sess-1', state: { session: fakeSession } }]}>
       <Routes><Route path="/session/:sessionId" element={<MainPage />} /></Routes>
@@ -110,6 +117,10 @@ function renderAsParticipant() {
 describe('MainPage - ホスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
@@ -203,6 +214,7 @@ describe('MainPage - ホスト', () => {
 
     expect(window.confirm).toHaveBeenCalledWith('Bobさんをセッションから退出させますか？')
     expect(mockRpc).toHaveBeenCalledWith('kick_participant', { p_participant_id: 'p-2' })
+    expect(mockRemoveParticipant).toHaveBeenCalledWith('p-2')
   })
 
   it('メンバータブでホスト自身のキックボタンは表示しない', async () => {
@@ -218,6 +230,10 @@ describe('MainPage - ホスト', () => {
 describe('MainPage - 参加者', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
@@ -311,11 +327,25 @@ describe('MainPage - 参加者', () => {
 
     expect(screen.queryByRole('button', { name: 'Bobをキック' })).not.toBeInTheDocument()
   })
+
+  it('自分が参加者一覧から消えたらトップへ戻る', async () => {
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    )
+
+    renderAsParticipant()
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
 })
 
 describe('MainPage - トースト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
