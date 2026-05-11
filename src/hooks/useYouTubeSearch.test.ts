@@ -18,6 +18,7 @@ const mockApiResponse = {
       id: { videoId: 'vid-1' },
       snippet: {
         title: 'テスト動画1',
+        channelTitle: 'テストチャンネル1',
         thumbnails: { medium: { url: 'https://img.youtube.com/vi/vid-1/mqdefault.jpg' } },
       },
     },
@@ -25,6 +26,7 @@ const mockApiResponse = {
       id: { videoId: 'vid-2' },
       snippet: {
         title: 'テスト動画2',
+        channelTitle: 'テストチャンネル2',
         thumbnails: { medium: { url: 'https://img.youtube.com/vi/vid-2/mqdefault.jpg' } },
       },
     },
@@ -56,6 +58,7 @@ describe('useYouTubeSearch', () => {
     expect(result.current.results[0]).toEqual({
       videoId: 'vid-1',
       title: 'テスト動画1',
+      channelTitle: 'テストチャンネル1',
       thumbnail: 'https://img.youtube.com/vi/vid-1/mqdefault.jpg',
     })
   })

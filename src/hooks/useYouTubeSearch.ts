@@ -3,6 +3,7 @@ import { useState } from 'react'
 export interface VideoItem {
   videoId: string
   title: string
+  channelTitle?: string
   thumbnail: string
 }
 
@@ -32,13 +33,14 @@ export function useYouTubeSearch() {
       const json = await res.json() as {
         items: Array<{
           id: { videoId: string }
-          snippet: { title: string; thumbnails: { medium?: { url: string } } }
+          snippet: { title: string; channelTitle?: string; thumbnails: { medium?: { url: string } } }
         }>
       }
       setResults(
         json.items.map((item) => ({
           videoId: item.id.videoId,
           title: item.snippet.title,
+          channelTitle: item.snippet.channelTitle,
           thumbnail:
             item.snippet.thumbnails.medium?.url ??
             `https://img.youtube.com/vi/${item.id.videoId}/mqdefault.jpg`,
