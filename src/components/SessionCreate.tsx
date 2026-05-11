@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronLeft, faUser, faCampground } from '@fortawesome/free-solid-svg-icons'
 import { useSessionCreate } from '../hooks/useSessionCreate'
+import { saveLastSession } from '../utils/lastSession'
 
 export default function SessionCreate() {
   const [name, setName] = useState('')
@@ -13,7 +14,10 @@ export default function SessionCreate() {
     e.preventDefault()
     if (!name.trim()) return
     const session = await createSession(name.trim())
-    if (session) navigate(`/invite/${session.id}`, { state: { session } })
+    if (session) {
+      saveLastSession(session)
+      navigate(`/invite/${session.id}`, { state: { session } })
+    }
   }
 
   return (

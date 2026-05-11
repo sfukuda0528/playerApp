@@ -15,6 +15,7 @@ import { usePhotos } from '../hooks/usePhotos'
 import { useParticipants } from '../hooks/useParticipants'
 import { supabase } from '../lib/supabase'
 import type { Session, Photo, MusicLink } from '../types/session'
+import { clearLastSession } from '../utils/lastSession'
 
 export default function MainPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -81,7 +82,10 @@ export default function MainPage() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'sessions' },
         (payload) => {
-          if (payload.new.id === sessionId && payload.new.status === 'ended') navigate('/')
+          if (payload.new.id === sessionId && payload.new.status === 'ended') {
+            clearLastSession()
+            navigate('/')
+          }
         }
       )
       .subscribe()
@@ -91,7 +95,10 @@ export default function MainPage() {
   const handleEnd = async () => {
     if (!confirm('セッションを終了しますか？')) return
     const ok = await endSession(sessionId!)
-    if (ok) navigate('/')
+    if (ok) {
+      clearLastSession()
+      navigate('/')
+    }
   }
 
   const tabTriggerClass =

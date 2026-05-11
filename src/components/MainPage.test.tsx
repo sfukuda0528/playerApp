@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MainPage from './MainPage'
-import type { Photo, MusicLink } from '../types/session'
+import type { Photo, MusicLink, Session } from '../types/session'
+import { loadLastSession, saveLastSession } from '../utils/lastSession'
 
 const {
   mockNavigate,
@@ -80,7 +81,7 @@ vi.mock('../lib/supabase', () => {
   }
 })
 
-const fakeSession = {
+const fakeSession: Session = {
   id: 'sess-1', code: '472819', host_name: 'Alice', host_auth_id: 'uid-host',
   status: 'active', last_active_at: '', inactivity_timeout_min: 360, created_at: '',
 }
@@ -109,6 +110,7 @@ describe('MainPage - ホスト', () => {
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    localStorage.clear()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -146,11 +148,33 @@ describe('MainPage - ホスト', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
+  it('セッション終了ボタンで前回セッションを削除する', async () => {
+    mockEndSession.mockResolvedValue(true)
+    saveLastSession(fakeSession)
+
+    renderAsHost()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'セッション終了' }))
+
+    expect(loadLastSession()).toBeNull()
+  })
+
   it('外部からstatus=endedになったら/へ遷移', async () => {
     renderAsHost()
     await waitFor(() => realtimeCallbacks.sessionStatus !== null)
     realtimeCallbacks.sessionStatus!({ new: { id: 'sess-1', status: 'ended' } })
     expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('外部からstatus=endedになったら前回セッションを削除する', async () => {
+    saveLastSession(fakeSession)
+
+    renderAsHost()
+    await waitFor(() => realtimeCallbacks.sessionStatus !== null)
+    realtimeCallbacks.sessionStatus!({ new: { id: 'sess-1', status: 'ended' } })
+
+    expect(loadLastSession()).toBeNull()
   })
 
   it('別セッションのstatus=ended更新では遷移しない', async () => {
