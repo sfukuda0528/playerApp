@@ -2,14 +2,18 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useSessionJoin } from './useSessionJoin'
 
-const { mockSignInAnonymously, mockRpc } = vi.hoisted(() => ({
+const { mockGetSession, mockSignInAnonymously, mockRpc } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
   mockSignInAnonymously: vi.fn(),
   mockRpc: vi.fn(),
 }))
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    auth: { signInAnonymously: mockSignInAnonymously },
+    auth: {
+      getSession: mockGetSession,
+      signInAnonymously: mockSignInAnonymously,
+    },
     rpc: mockRpc,
   },
 }))
@@ -28,6 +32,10 @@ const fakeParticipant = {
 describe('useSessionJoin', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    })
     mockSignInAnonymously.mockResolvedValue({
       data: { user: { id: 'anon-uid-456' } }, error: null,
     })
@@ -46,6 +54,26 @@ describe('useSessionJoin', () => {
     expect(mockRpc).toHaveBeenCalledWith('join_session', { p_code: '472819', p_name: 'Bob' })
     expect(joinResult).toEqual({ session: fakeSession, participant: fakeParticipant })
     expect(result.current.error).toBeNull()
+  })
+
+  it('既存Authセッションがある場合: 匿名Authを再作成せず参加する', async () => {
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: 'anon-uid-456' } } },
+      error: null,
+    })
+    mockRpc.mockResolvedValue({
+      data: { session: fakeSession, participant: fakeParticipant },
+      error: null,
+    })
+
+    const { result } = renderHook(() => useSessionJoin())
+    let joinResult: unknown
+    await act(async () => { joinResult = await result.current.joinSession('472819', 'Bob') })
+
+    expect(mockGetSession).toHaveBeenCalled()
+    expect(mockSignInAnonymously).not.toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith('join_session', { p_code: '472819', p_name: 'Bob' })
+    expect(joinResult).toEqual({ session: fakeSession, participant: fakeParticipant })
   })
 
   it('存在しないコード: nullを返し「セッションが見つかりません」をセット', async () => {
