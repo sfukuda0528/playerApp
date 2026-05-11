@@ -30,17 +30,19 @@ interface Props {
 }
 
 function SortableQueueItem({
-  link, index, currentIndex, currentUserId, loading, onDelete,
+  link, index, currentIndex, currentUserId, isHost, loading, onDelete,
 }: {
   link: MusicLink
   index: number
   currentIndex: number
   currentUserId: string
+  isHost: boolean
   loading: boolean
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: link.id })
   const isCurrent = index === currentIndex
+  const canDelete = isHost || link.added_by_auth_id === currentUserId
   return (
     <li
       ref={setNodeRef}
@@ -82,7 +84,7 @@ function SortableQueueItem({
           再生中
         </span>
       )}
-      {link.added_by_auth_id === currentUserId && (
+      {canDelete && (
         <button
           type="button"
           aria-label="削除"
@@ -453,6 +455,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                     index={index}
                     currentIndex={currentIndex}
                     currentUserId={currentUserId}
+                    isHost={isHost}
                     loading={loading}
                     onDelete={() => handleDelete(link, index)}
                   />
