@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SessionCreate from './SessionCreate'
+import { loadLastSession } from '../utils/lastSession'
 
 const { mockNavigate, mockCreateSession, mockError } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -26,6 +27,7 @@ describe('SessionCreate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockError.value = null
+    localStorage.clear()
   })
 
   it('名前入力フォームが存在する', () => {
@@ -51,6 +53,17 @@ describe('SessionCreate', () => {
         state: { session: fakeSession },
       })
     )
+  })
+
+  it('成功時: 前回セッションとして保存する', async () => {
+    const fakeSession = { id: 'sess-1', code: '472819' }
+    mockCreateSession.mockResolvedValue(fakeSession)
+
+    render(<MemoryRouter><SessionCreate /></MemoryRouter>)
+    await userEvent.type(screen.getByPlaceholderText('ニックネーム'), 'Alice')
+    await userEvent.click(screen.getByRole('button', { name: 'セッションを作成' }))
+
+    await waitFor(() => expect(loadLastSession()).toEqual(fakeSession))
   })
 
   it('失敗時: エラーメッセージを表示', () => {

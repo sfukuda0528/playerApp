@@ -8,12 +8,13 @@ import {
   faGripVertical, faXmark, faMagnifyingGlass, faList,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
-import { ListStart, ListEnd } from 'lucide-react'
+import { ListStart, ListEnd, Plus } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
 import { useReorderMusicLink } from '../hooks/useReorderMusicLink'
 import { useYouTubeSearch } from '../hooks/useYouTubeSearch'
+import type { VideoItem } from '../hooks/useYouTubeSearch'
 import { useYouTubeVideoTitle } from '../hooks/useYouTubeVideoTitle'
 import { usePlaylistItems } from '../hooks/usePlaylistItems'
 import YouTubePlayer from './YouTubePlayer'
@@ -128,6 +129,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
   const [isPlaying, setIsPlaying] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [urlInput, setUrlInput] = useState('')
+  const [selectedSearchItem, setSelectedSearchItem] = useState<VideoItem | null>(null)
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
 
@@ -349,7 +351,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                 {results.map((item) => (
                   <li
                     key={item.videoId}
-                    className="flex items-center gap-2 rounded-xl px-2 py-2 bg-white active:shadow-md transition-shadow duration-150"
+                    className="flex items-start gap-2 rounded-xl px-2 py-2 bg-white active:shadow-md transition-shadow duration-150"
                     style={{ boxShadow: '0 2px 8px rgba(124,74,30,0.09)', border: '1px solid rgba(240,200,150,0.35)' }}
                   >
                     <img
@@ -357,13 +359,30 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       alt={item.title}
                       className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
                     />
-                    <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <span className="block text-xs text-camp-dark truncate">{item.title}</span>
+                      {item.channelTitle && (
+                        <span className="block text-[11px] text-camp-brown/55 truncate mt-0.5">
+                          {item.channelTitle}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${item.title}の追加方法を表示`}
+                      onClick={() => setSelectedSearchItem(item)}
+                      disabled={loading}
+                      className="sm:hidden text-white w-8 h-8 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+                    >
+                      <Plus size={16} />
+                    </button>
                     <button
                       type="button"
                       aria-label={`${item.title}を次に再生`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                      className="hidden sm:flex text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
                       <ListStart size={13} />
@@ -374,7 +393,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       aria-label={`${item.title}をキューに追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                      className="hidden sm:flex text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
                       <ListEnd size={13} />
@@ -465,6 +484,76 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
           </DndContext>
         </div>
       </div>
+      {selectedSearchItem && (
+        <div className="fixed inset-0 z-50 sm:hidden flex items-end justify-center bg-black/40 px-4 py-5">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="search-action-dialog-title"
+            className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                aria-label="閉じる"
+                onClick={() => setSelectedSearchItem(null)}
+                className="w-8 h-8 rounded-lg text-camp-brown/60 bg-camp-wheat/30 flex items-center justify-center active:scale-95 transition-all"
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            <div className="mt-3 flex gap-3">
+              {selectedSearchItem.thumbnail && (
+                <img
+                  src={selectedSearchItem.thumbnail}
+                  alt={selectedSearchItem.title}
+                  className="w-28 h-[63px] object-cover rounded-lg flex-shrink-0"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-camp-dark leading-snug">
+                  {selectedSearchItem.title}
+                </p>
+                <p className="text-xs text-camp-brown/60 mt-1">
+                  {selectedSearchItem.channelTitle ?? 'チャンネル名不明'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                aria-label={`${selectedSearchItem.title}を次に再生（ダイアログ）`}
+                onClick={() => {
+                  void handleAddFromSearch(selectedSearchItem.videoId, selectedSearchItem.title, 'head')
+                  setSelectedSearchItem(null)
+                }}
+                disabled={loading}
+                className="w-full justify-center text-sm text-white font-bold px-3 py-2.5 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center gap-1.5"
+                style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+              >
+                <ListStart size={15} />
+                次に再生
+              </button>
+              <button
+                type="button"
+                aria-label={`${selectedSearchItem.title}をキューに追加（ダイアログ）`}
+                onClick={() => {
+                  void handleAddFromSearch(selectedSearchItem.videoId, selectedSearchItem.title, 'tail')
+                  setSelectedSearchItem(null)
+                }}
+                disabled={loading}
+                className="w-full justify-center text-sm text-white font-bold px-3 py-2.5 rounded-xl disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center gap-1.5"
+                style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+              >
+                <ListEnd size={15} />
+                キューに追加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

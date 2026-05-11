@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCampground, faPlay, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
+import { faCampground, faPlay, faRotateLeft, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
+import { loadLastSession } from '../utils/lastSession'
 
 export default function TopPage() {
   const navigate = useNavigate()
+  const lastSession = loadLastSession()
+
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'linear-gradient(170deg, #fdf6ec, #fff8f0)' }}>
       <header
@@ -23,6 +26,19 @@ export default function TopPage() {
         <p className="text-camp-cream/60 text-sm relative z-10">思い出を、みんなで。</p>
       </header>
       <main className="flex flex-col items-center justify-center flex-1 gap-3 px-6">
+        {lastSession && (
+          <button
+            onClick={() => navigate(`/session/${lastSession.id}`, { state: { session: lastSession } })}
+            className="w-full max-w-sm text-camp-brown font-bold text-base py-3.5 rounded-2xl border-2 border-camp-wheat active:scale-95 transition-all duration-150 flex items-center justify-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, white, #fff8f0)',
+              boxShadow: '0 4px 12px rgba(124,74,30,0.12)',
+            }}
+          >
+            <FontAwesomeIcon icon={faRotateLeft} />
+            前回の部屋に戻る
+          </button>
+        )}
         <button
           onClick={() => navigate('/create')}
           className="w-full max-w-sm text-white font-bold text-base py-3.5 rounded-2xl active:scale-95 transition-all duration-150 flex items-center justify-center gap-2"

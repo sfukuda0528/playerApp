@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChevronLeft, faHashtag, faUser, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
 import { useSessionJoin } from '../hooks/useSessionJoin'
+import { saveLastSession } from '../utils/lastSession'
 
 export default function SessionJoin() {
   const { code: urlCode } = useParams<{ code?: string }>()
@@ -15,7 +16,10 @@ export default function SessionJoin() {
     e.preventDefault()
     if (!code.trim() || !name.trim()) return
     const result = await joinSession(code.trim(), name.trim())
-    if (result) navigate(`/session/${result.session.id}`, { state: { session: result.session } })
+    if (result) {
+      saveLastSession(result.session)
+      navigate(`/session/${result.session.id}`, { state: { session: result.session } })
+    }
   }
 
   return (

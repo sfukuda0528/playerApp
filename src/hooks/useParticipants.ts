@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Participant } from '../types/session'
 
 export function useParticipants(sessionId: string) {
   const [participants, setParticipants] = useState<Participant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<unknown>(null)
+
+  const removeParticipant = useCallback((participantId: string) => {
+    setParticipants((prev) => prev.filter((p) => p.id !== participantId))
+  }, [])
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setError(null)
 
     supabase
       .from('participants')
@@ -14,7 +22,12 @@ export function useParticipants(sessionId: string) {
       .eq('session_id', sessionId)
       .then(({ data, error }) => {
         if (cancelled) return
-        if (error) { console.error('Failed to fetch participants:', error); return }
+        setLoading(false)
+        if (error) {
+          setError(error)
+          console.error('Failed to fetch participants:', error)
+          return
+        }
         if (data) setParticipants(data as Participant[])
       })
 
@@ -32,13 +45,25 @@ export function useParticipants(sessionId: string) {
           setParticipants((prev) => [...prev, payload.new as Participant])
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'participants',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          removeParticipant(payload.old.id)
+        }
+      )
       .subscribe()
 
     return () => {
       cancelled = true
       supabase.removeChannel(channel)
     }
-  }, [sessionId])
+  }, [sessionId, removeParticipant])
 
-  return { participants }
+  return { participants, loading, error, removeParticipant }
 }

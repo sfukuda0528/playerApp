@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import SessionJoin from './SessionJoin'
+import { loadLastSession } from '../utils/lastSession'
 
 const { mockNavigate, mockJoinSession } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -32,7 +33,10 @@ function renderAtPath(path: string) {
 }
 
 describe('SessionJoin', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+  })
 
   it('URLのコードパラメータをコード欄に自動入力', () => {
     renderAtPath('/join/472819')
@@ -60,5 +64,19 @@ describe('SessionJoin', () => {
         state: { session: fakeResult.session },
       })
     )
+  })
+
+  it('成功時: 前回セッションとして保存する', async () => {
+    const fakeResult = {
+      session: { id: 'sess-1', code: '472819' },
+      participant: { id: 'p-2' },
+    }
+    mockJoinSession.mockResolvedValue(fakeResult)
+
+    renderAtPath('/join/472819')
+    await userEvent.type(screen.getByPlaceholderText('ニックネーム'), 'Bob')
+    await userEvent.click(screen.getByRole('button', { name: '参加する' }))
+
+    await waitFor(() => expect(loadLastSession()).toEqual(fakeResult.session))
   })
 })

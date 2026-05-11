@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react'
+import { render, screen, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MusicPanel from './MusicPanel'
@@ -16,7 +16,7 @@ const {
   mockLinks: { value: [] as MusicLink[] },
   mockYouTubePlayer: vi.fn(),
   mockSearch: vi.fn(),
-  mockSearchResults: { value: [] as Array<{ videoId: string; title: string; thumbnail: string }> },
+  mockSearchResults: { value: [] as Array<{ videoId: string; title: string; thumbnail: string; channelTitle?: string }> },
   mockFetchTitle: vi.fn(),
   mockFetchedTitle: { value: null as string | null },
   mockReorder: vi.fn(),
@@ -336,6 +336,40 @@ describe('MusicPanel', () => {
         'https://www.youtube.com/watch?v=vid-1',
         '検索結果動画',
         'tail'
+      )
+    })
+
+    it('検索結果のモバイル用＋ボタンを押すと動画情報付きダイアログを表示する', async () => {
+      mockSearchResults.value = [
+        { videoId: 'vid-1', title: '検索結果動画', thumbnail: 'https://example.com/thumb.jpg', channelTitle: '検索チャンネル' },
+      ]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
+
+      const dialog = screen.getByRole('dialog', { name: '検索結果動画の追加方法' })
+      expect(dialog).toHaveTextContent('検索結果動画')
+      expect(dialog).toHaveTextContent('検索チャンネル')
+      expect(dialog).toHaveTextContent('次に再生')
+      expect(dialog).toHaveTextContent('キューに追加')
+      expect(within(dialog).getByRole('img', { name: '検索結果動画' })).toHaveAttribute('src', 'https://example.com/thumb.jpg')
+    })
+
+    it('検索結果のモバイル用ダイアログから次に再生へ追加できる', async () => {
+      mockSearchResults.value = [
+        { videoId: 'vid-1', title: '検索結果動画', thumbnail: '', channelTitle: '検索チャンネル' },
+      ]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
+
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生（ダイアログ）' }))
+
+      expect(mockAddLink).toHaveBeenCalledWith(
+        'sess-1',
+        'https://www.youtube.com/watch?v=vid-1',
+        '検索結果動画',
+        'head'
       )
     })
 

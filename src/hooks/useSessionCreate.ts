@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { ensureAnonymousUser } from '../utils/anonymousAuth'
 import type { Session } from '../types/session'
 
 export function useSessionCreate() {
@@ -10,8 +11,7 @@ export function useSessionCreate() {
     setLoading(true)
     setError(null)
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInAnonymously()
-      if (authError || !authData.user) throw authError ?? new Error('認証に失敗しました')
+      await ensureAnonymousUser()
 
       const { data, error: rpcError } = await supabase.rpc('create_session', {
         p_host_name: hostName,

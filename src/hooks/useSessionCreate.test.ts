@@ -2,14 +2,18 @@ import { renderHook, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useSessionCreate } from './useSessionCreate'
 
-const { mockSignInAnonymously, mockRpc } = vi.hoisted(() => ({
+const { mockGetSession, mockSignInAnonymously, mockRpc } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
   mockSignInAnonymously: vi.fn(),
   mockRpc: vi.fn(),
 }))
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    auth: { signInAnonymously: mockSignInAnonymously },
+    auth: {
+      getSession: mockGetSession,
+      signInAnonymously: mockSignInAnonymously,
+    },
     rpc: mockRpc,
   },
 }))
@@ -23,6 +27,10 @@ const fakeSession = {
 describe('useSessionCreate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    })
     mockSignInAnonymously.mockResolvedValue({
       data: { user: { id: 'anon-uid-123' } },
       error: null,
@@ -40,6 +48,23 @@ describe('useSessionCreate', () => {
     expect(session).toEqual(fakeSession)
     expect(result.current.error).toBeNull()
     expect(result.current.loading).toBe(false)
+  })
+
+  it('既存Authセッションがある場合: 匿名Authを再作成せずセッションを作成する', async () => {
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: 'anon-uid-123' } } },
+      error: null,
+    })
+    mockRpc.mockResolvedValue({ data: fakeSession, error: null })
+
+    const { result } = renderHook(() => useSessionCreate())
+    let session: unknown
+    await act(async () => { session = await result.current.createSession('Alice') })
+
+    expect(mockGetSession).toHaveBeenCalled()
+    expect(mockSignInAnonymously).not.toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith('create_session', { p_host_name: 'Alice' })
+    expect(session).toEqual(fakeSession)
   })
 
   it('匿名Auth失敗時: nullを返しerrorをセット', async () => {

@@ -3,13 +3,17 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import MainPage from './MainPage'
-import type { Photo, MusicLink } from '../types/session'
+import type { Photo, MusicLink, Session } from '../types/session'
+import { loadLastSession, saveLastSession } from '../utils/lastSession'
 
 const {
   mockNavigate,
   mockEndSession,
   mockRemoveChannel,
   mockGetUser,
+  mockRpc,
+  mockParticipants,
+  mockRemoveParticipant,
   realtimeCallbacks,
   capturedPhotosInsert,
   capturedMusicPanelProps,
@@ -18,6 +22,12 @@ const {
   mockEndSession: vi.fn(),
   mockRemoveChannel: vi.fn(),
   mockGetUser: vi.fn(),
+  mockRpc: vi.fn(),
+  mockRemoveParticipant: vi.fn(),
+  mockParticipants: [
+    { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+  ],
   realtimeCallbacks: { sessionStatus: null as ((payload: { new: { id: string; status: string } }) => void) | null },
   capturedPhotosInsert: { onInsert: undefined as ((photo: Photo) => void) | undefined },
   capturedMusicPanelProps: {
@@ -41,10 +51,10 @@ vi.mock('../hooks/usePhotos', () => ({
 }))
 vi.mock('../hooks/useParticipants', () => ({
   useParticipants: () => ({
-    participants: [
-      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
-      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
-    ],
+    participants: mockParticipants,
+    loading: false,
+    error: null,
+    removeParticipant: mockRemoveParticipant,
   }),
 }))
 vi.mock('qrcode', () => ({
@@ -74,13 +84,14 @@ vi.mock('../lib/supabase', () => {
   return {
     supabase: {
       auth: { getUser: mockGetUser },
+      rpc: mockRpc,
       channel: () => channelMock,
       removeChannel: mockRemoveChannel,
     },
   }
 })
 
-const fakeSession = {
+const fakeSession: Session = {
   id: 'sess-1', code: '472819', host_name: 'Alice', host_auth_id: 'uid-host',
   status: 'active', last_active_at: '', inactivity_timeout_min: 360, created_at: '',
 }
@@ -95,7 +106,7 @@ function renderAsHost() {
 }
 
 function renderAsParticipant() {
-  mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-other' } } })
+  mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } } })
   return render(
     <MemoryRouter initialEntries={[{ pathname: '/session/sess-1', state: { session: fakeSession } }]}>
       <Routes><Route path="/session/:sessionId" element={<MainPage />} /></Routes>
@@ -106,9 +117,14 @@ function renderAsParticipant() {
 describe('MainPage - ホスト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    localStorage.clear()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -119,7 +135,12 @@ describe('MainPage - ホスト', () => {
 
   it('参加者数がヘッダーに表示される', async () => {
     renderAsHost()
-    await waitFor(() => expect(screen.getByText('2/4')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('2/4')).not.toBeInTheDocument())
+  })
+
+  it('ヘッダーにセッション終了ボタンが表示される', async () => {
+    renderAsHost()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'セッション終了' })).toBeInTheDocument())
   })
 
   it('メンバータブに切り替えるとQRコードが表示される', async () => {
@@ -136,14 +157,22 @@ describe('MainPage - ホスト', () => {
     expect(await screen.findByText('472819')).toBeInTheDocument()
   })
 
-  it('メンバータブのセッション終了ボタンでendSessionを呼び/へ遷移', async () => {
+  it('ヘッダーのセッション終了ボタンでendSessionを呼び/へ遷移', async () => {
     mockEndSession.mockResolvedValue(true)
     renderAsHost()
-    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
-    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'セッション終了' }))
     expect(mockEndSession).toHaveBeenCalledWith('sess-1')
     expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('セッション終了ボタンで前回セッションを削除する', async () => {
+    mockEndSession.mockResolvedValue(true)
+    saveLastSession(fakeSession)
+
+    renderAsHost()
+    await userEvent.click(await screen.findByRole('button', { name: 'セッション終了' }))
+
+    expect(loadLastSession()).toBeNull()
   })
 
   it('外部からstatus=endedになったら/へ遷移', async () => {
@@ -151,6 +180,16 @@ describe('MainPage - ホスト', () => {
     await waitFor(() => realtimeCallbacks.sessionStatus !== null)
     realtimeCallbacks.sessionStatus!({ new: { id: 'sess-1', status: 'ended' } })
     expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('外部からstatus=endedになったら前回セッションを削除する', async () => {
+    saveLastSession(fakeSession)
+
+    renderAsHost()
+    await waitFor(() => realtimeCallbacks.sessionStatus !== null)
+    realtimeCallbacks.sessionStatus!({ new: { id: 'sess-1', status: 'ended' } })
+
+    expect(loadLastSession()).toBeNull()
   })
 
   it('別セッションのstatus=ended更新では遷移しない', async () => {
@@ -164,14 +203,41 @@ describe('MainPage - ホスト', () => {
     renderAsHost()
     await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(true))
   })
+
+  it('メンバータブで非ホストメンバーをキックできる', async () => {
+    mockRpc.mockResolvedValue({ error: null })
+    renderAsHost()
+
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Bobをキック' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('Bobさんをセッションから退出させますか？')
+    expect(mockRpc).toHaveBeenCalledWith('kick_participant', { p_participant_id: 'p-2' })
+    expect(mockRemoveParticipant).toHaveBeenCalledWith('p-2')
+  })
+
+  it('メンバータブでホスト自身のキックボタンは表示しない', async () => {
+    renderAsHost()
+
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+
+    expect(screen.queryByRole('button', { name: 'Aliceをキック' })).not.toBeInTheDocument()
+  })
 })
 
 describe('MainPage - 参加者', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('写真タブにSlideshowが表示されない', async () => {
@@ -196,6 +262,23 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'セッション終了' })).not.toBeInTheDocument()
+  })
+
+  it('ヘッダーに退出ボタンが表示される', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByRole('button', { name: '退出' })).toBeInTheDocument())
+    expect(screen.queryByText('2/4')).not.toBeInTheDocument()
+  })
+
+  it('退出ボタンでleave_sessionを呼び/へ遷移する', async () => {
+    mockRpc.mockResolvedValue({ error: null })
+    renderAsParticipant()
+
+    await userEvent.click(await screen.findByRole('button', { name: '退出' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('セッションから退出しますか？')
+    expect(mockRpc).toHaveBeenCalledWith('leave_session', { p_session_id: 'sess-1' })
+    expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
   it('写真タブ表示中も MusicPanel が DOM に残る', async () => {
@@ -235,11 +318,34 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(false))
   })
+
+  it('メンバータブでキックボタンを表示しない', async () => {
+    renderAsParticipant()
+
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+
+    expect(screen.queryByRole('button', { name: 'Bobをキック' })).not.toBeInTheDocument()
+  })
+
+  it('自分が参加者一覧から消えたらトップへ戻る', async () => {
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    )
+
+    renderAsParticipant()
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
+  })
 })
 
 describe('MainPage - トースト', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
