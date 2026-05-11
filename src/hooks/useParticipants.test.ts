@@ -10,7 +10,7 @@ const {
   mockRemoveChannel,
   mockInitialFetch,
 } = vi.hoisted(() => ({
-  mockSubscribe: vi.fn(() => ({ unsubscribe: vi.fn() })),
+  mockSubscribe: vi.fn(),
   mockOn: vi.fn(),
   mockChannel: vi.fn(),
   mockRemoveChannel: vi.fn(),
@@ -43,6 +43,7 @@ describe('useParticipants', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockInitialFetch.mockResolvedValue({ data: [alice], error: null })
+    const channelApi = { on: mockOn, subscribe: mockSubscribe }
     mockOn.mockImplementation((_event: string, filter: { event: string }, handler: unknown) => {
       if (filter.event === 'INSERT') {
         insertHandler = handler as (payload: { new: Participant }) => void
@@ -50,9 +51,13 @@ describe('useParticipants', () => {
       if (filter.event === 'DELETE') {
         deleteHandler = handler as (payload: { old: Pick<Participant, 'id'> }) => void
       }
-      return { on: mockOn, subscribe: mockSubscribe }
+      return channelApi
     })
-    mockChannel.mockReturnValue({ on: mockOn })
+    mockSubscribe.mockImplementation((callback?: (status: string) => void) => {
+      callback?.('SUBSCRIBED')
+      return channelApi
+    })
+    mockChannel.mockReturnValue(channelApi)
   })
 
   it('初期取得: 既存参加者リストを返す', async () => {
@@ -79,6 +84,48 @@ describe('useParticipants', () => {
     act(() => { insertHandler({ new: bob }) })
 
     expect(onInsert).toHaveBeenCalledWith(bob)
+  })
+
+  it('初期取得は Realtime 購読確立後に開始する', () => {
+    mockSubscribe.mockImplementation(() => ({ on: mockOn, subscribe: mockSubscribe }))
+
+    const { result } = renderHook(() => useParticipants('sess-1'))
+
+    expect(mockInitialFetch).not.toHaveBeenCalled()
+    expect(result.current.loading).toBe(true)
+  })
+
+  it('初期取得中に届いた INSERT を fetch 結果で消さない', async () => {
+    let resolveFetch: (value: { data: Participant[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => useParticipants('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    act(() => { insertHandler({ new: bob }) })
+    await waitFor(() => expect(result.current.participants.map((p) => p.id)).toEqual(['p-2']))
+
+    resolveFetch({ data: [alice], error: null })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.participants.map((p) => p.id)).toEqual(['p-1', 'p-2'])
+  })
+
+  it('初期取得中に届いた DELETE を fetch 結果で復活させない', async () => {
+    let resolveFetch: (value: { data: Participant[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => useParticipants('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    act(() => { deleteHandler({ old: { id: 'p-2' } }) })
+    resolveFetch({ data: [alice, bob], error: null })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.participants.map((p) => p.id)).toEqual(['p-1'])
   })
 
   it('Realtime DELETE: 削除された参加者をリストから除く', async () => {
