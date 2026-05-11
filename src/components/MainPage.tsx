@@ -85,6 +85,43 @@ export default function MainPage() {
   }, [participantsLoading, participantsError, currentUserId, isHost, participants, navigate])
 
   useEffect(() => {
+    if (!sessionId || !currentUserId || isHost) return
+
+    let cancelled = false
+    const checkMembership = async () => {
+      const { data, error } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('auth_id', currentUserId)
+        .limit(1)
+
+      if (cancelled) return
+      if (error) {
+        console.error('Failed to check participant membership:', error)
+        return
+      }
+      if (!data || data.length === 0) {
+        clearLastSession()
+        navigate('/')
+      }
+    }
+
+    const intervalId = window.setInterval(checkMembership, 3000)
+    window.addEventListener('focus', checkMembership)
+    window.addEventListener('pageshow', checkMembership)
+    document.addEventListener('visibilitychange', checkMembership)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', checkMembership)
+      window.removeEventListener('pageshow', checkMembership)
+      document.removeEventListener('visibilitychange', checkMembership)
+    }
+  }, [sessionId, currentUserId, isHost, navigate])
+
+  useEffect(() => {
     if (!session?.code) return
     const joinUrl = `${window.location.origin}/join/${session.code}`
     QRCode.toDataURL(joinUrl).then(setQrUrl).catch(() => setQrError(true))

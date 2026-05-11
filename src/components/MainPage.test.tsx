@@ -1,7 +1,7 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MainPage from './MainPage'
 import type { Photo, MusicLink, Session } from '../types/session'
 import { loadLastSession, saveLastSession } from '../utils/lastSession'
@@ -12,6 +12,7 @@ const {
   mockRemoveChannel,
   mockGetUser,
   mockRpc,
+  mockMembershipCheck,
   mockParticipants,
   mockRemoveParticipant,
   realtimeCallbacks,
@@ -23,6 +24,7 @@ const {
   mockRemoveChannel: vi.fn(),
   mockGetUser: vi.fn(),
   mockRpc: vi.fn(),
+  mockMembershipCheck: vi.fn(),
   mockRemoveParticipant: vi.fn(),
   mockParticipants: [
     { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
@@ -85,6 +87,15 @@ vi.mock('../lib/supabase', () => {
     supabase: {
       auth: { getUser: mockGetUser },
       rpc: mockRpc,
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              limit: () => mockMembershipCheck(),
+            }),
+          }),
+        }),
+      }),
       channel: () => channelMock,
       removeChannel: mockRemoveChannel,
     },
@@ -95,6 +106,10 @@ const fakeSession: Session = {
   id: 'sess-1', code: '472819', host_name: 'Alice', host_auth_id: 'uid-host',
   status: 'active', last_active_at: '', inactivity_timeout_min: 360, created_at: '',
 }
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function renderAsHost() {
   mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-host' } } })
@@ -237,6 +252,7 @@ describe('MainPage - 参加者', () => {
     capturedPhotosInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    mockMembershipCheck.mockResolvedValue({ data: [{ id: 'p-2' }], error: null })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -337,6 +353,23 @@ describe('MainPage - 参加者', () => {
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'))
   })
+
+  it('Realtime削除が届かなくても参加状態チェックでキックを検知してトップへ戻る', async () => {
+    vi.useFakeTimers()
+    mockMembershipCheck.mockResolvedValue({ data: [], error: null })
+
+    renderAsParticipant()
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+
+    expect(mockMembershipCheck).toHaveBeenCalled()
+    expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
 })
 
 describe('MainPage - トースト', () => {
@@ -350,11 +383,6 @@ describe('MainPage - トースト', () => {
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
   })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('写真追加時: 追加者名のトーストが表示される', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
