@@ -32,6 +32,18 @@ export function useParticipants(sessionId: string) {
           setParticipants((prev) => [...prev, payload.new as Participant])
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'participants',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          setParticipants((prev) => prev.filter((p) => p.id !== payload.old.id))
+        }
+      )
       .subscribe()
 
     return () => {

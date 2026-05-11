@@ -4,7 +4,7 @@ import QRCode from 'qrcode'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import {
-  faCampground, faCamera, faMusic, faUsers, faCrown,
+  faCampground, faCamera, faMusic, faUsers, faCrown, faUserSlash, faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons'
 import Slideshow from './Slideshow'
 import PhotoUpload from './PhotoUpload'
@@ -25,6 +25,8 @@ export default function MainPage() {
   const { endSession, loading } = useSessionEnd()
   const [isHost, setIsHost] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [leaving, setLeaving] = useState(false)
+  const [kickingParticipantId, setKickingParticipantId] = useState<string | null>(null)
   const { participants } = useParticipants(sessionId ?? '')
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
@@ -101,6 +103,32 @@ export default function MainPage() {
     }
   }
 
+  const handleLeave = async () => {
+    if (!confirm('セッションから退出しますか？')) return
+
+    setLeaving(true)
+    const { error } = await supabase.rpc('leave_session', { p_session_id: sessionId! })
+    setLeaving(false)
+    if (error) {
+      console.error('Failed to leave session:', error)
+      return
+    }
+
+    clearLastSession()
+    navigate('/')
+  }
+
+  const handleKick = async (participantId: string, participantName: string) => {
+    if (!confirm(`${participantName}さんをセッションから退出させますか？`)) return
+
+    setKickingParticipantId(participantId)
+    const { error } = await supabase.rpc('kick_participant', { p_participant_id: participantId })
+    setKickingParticipantId(null)
+    if (error) {
+      console.error('Failed to kick participant:', error)
+    }
+  }
+
   const tabTriggerClass =
     'flex-1 flex flex-col gap-1 py-2 text-xs rounded-xl ' +
     'text-camp-cream/40 data-[state=active]:text-camp-cream ' +
@@ -117,13 +145,18 @@ export default function MainPage() {
           <FontAwesomeIcon icon={faCampground} />
           CampCanvas
         </span>
-        <div
-          className="flex items-center gap-1 rounded-full px-2.5 py-1"
-          style={{ background: 'rgba(253,246,236,0.12)' }}
-        >
-          <FontAwesomeIcon icon={faUsers} className="text-camp-cream/70 text-xs" />
-          <span className="text-camp-cream/70 text-xs">{participants.length}/{MAX_PARTICIPANTS}</span>
-        </div>
+        {currentUserId && (
+          <button
+            type="button"
+            onClick={isHost ? handleEnd : handleLeave}
+            disabled={isHost ? loading : leaving}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-camp-cream active:scale-95 disabled:opacity-50 transition-all duration-150"
+            style={{ background: 'rgba(253,246,236,0.16)' }}
+          >
+            <FontAwesomeIcon icon={faRightFromBracket} className="text-xs" />
+            {isHost ? 'セッション終了' : '退出'}
+          </button>
+        )}
       </header>
 
       {toast && (
@@ -164,20 +197,38 @@ export default function MainPage() {
           <p className="text-center text-camp-amber text-sm font-medium">
             {participants.length} / {MAX_PARTICIPANTS} 人参加中
           </p>
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {[...participants]
               .sort((a, b) =>
                 a.auth_id === session?.host_auth_id ? -1 :
                 b.auth_id === session?.host_auth_id ? 1 : 0
               )
-              .map((p) => (
-                <li key={p.id} className="text-camp-brown text-sm text-center flex items-center justify-center gap-1">
-                  {p.auth_id === session?.host_auth_id && (
-                    <FontAwesomeIcon icon={faCrown} className="text-camp-amber text-xs" />
-                  )}
-                  {p.name}
-                </li>
-              ))}
+              .map((p) => {
+                const isParticipantHost = p.auth_id === session?.host_auth_id
+                const canKick = isHost && !isParticipantHost
+
+                return (
+                  <li key={p.id} className="text-camp-brown text-sm flex items-center justify-center gap-2">
+                    <span className="flex min-w-0 items-center gap-1">
+                      {isParticipantHost && (
+                        <FontAwesomeIcon icon={faCrown} className="text-camp-amber text-xs" />
+                      )}
+                      <span className="truncate">{p.name}</span>
+                    </span>
+                    {canKick && (
+                      <button
+                        type="button"
+                        aria-label={`${p.name}をキック`}
+                        disabled={kickingParticipantId === p.id}
+                        onClick={() => handleKick(p.id, p.name)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-camp-destructive/40 text-camp-destructive bg-white/70 active:scale-95 disabled:opacity-50 transition-all duration-150"
+                      >
+                        <FontAwesomeIcon icon={faUserSlash} className="text-xs" />
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
           </ul>
           {isHost && (
             <>
@@ -197,13 +248,6 @@ export default function MainPage() {
                   {session?.code}
                 </span>
               </div>
-              <button
-                onClick={handleEnd}
-                disabled={loading}
-                className="w-full border-2 border-camp-destructive text-camp-destructive font-bold py-3 rounded-xl bg-transparent active:scale-95 transition-all duration-150"
-              >
-                セッション終了
-              </button>
             </>
           )}
         </TabsContent>
