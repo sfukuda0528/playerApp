@@ -32,8 +32,8 @@ export default function YouTubePlayer({
   }, [isPlaying])
 
   const playerVars = playlistId
-    ? { autoplay: 0, list: playlistId, listType: 'playlist' as const }
-    : { autoplay: 0 }
+    ? { autoplay: isPlaying ? 1 : 0, list: playlistId, listType: 'playlist' as const }
+    : { autoplay: isPlaying ? 1 : 0 }
 
   return (
     <div className="flex flex-col gap-3 items-center">

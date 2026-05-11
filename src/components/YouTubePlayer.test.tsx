@@ -16,7 +16,7 @@ const { mockPlayVideo, mockPauseVideo, ytProps } = vi.hoisted(() => ({
 vi.mock('react-youtube', () => ({
   default: (props: {
     videoId: string
-    opts?: { playerVars?: { list?: string; listType?: string } }
+    opts?: { playerVars?: { autoplay?: number; list?: string; listType?: string } }
     onReady?: (e: { target: unknown }) => void
     onEnd?: () => void
     onError?: () => void
@@ -29,6 +29,7 @@ vi.mock('react-youtube', () => ({
       <div
         data-testid="yt-iframe"
         data-video-id={props.videoId}
+        data-autoplay={String(props.opts?.playerVars?.autoplay ?? '')}
         data-playlist-id={props.opts?.playerVars?.list ?? ''}
       />
     )
@@ -63,6 +64,12 @@ describe('YouTubePlayer', () => {
   it('isPlaying=true のとき playVideo を呼ぶ', () => {
     render(<YouTubePlayer {...baseProps} isPlaying={true} />)
     expect(mockPlayVideo).toHaveBeenCalled()
+  })
+
+  it('isPlaying=true で videoId が変わったとき次の動画を自動再生する設定を渡す', () => {
+    const { rerender } = render(<YouTubePlayer {...baseProps} isPlaying={true} />)
+    rerender(<YouTubePlayer {...baseProps} videoId="nextVideoId" isPlaying={true} />)
+    expect(screen.getByTestId('yt-iframe')).toHaveAttribute('data-autoplay', '1')
   })
 
   it('isPlaying=false のとき pauseVideo を呼ぶ', () => {
