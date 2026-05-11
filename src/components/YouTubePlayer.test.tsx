@@ -16,7 +16,7 @@ const { mockPlayVideo, mockPauseVideo, ytProps } = vi.hoisted(() => ({
 vi.mock('react-youtube', () => ({
   default: (props: {
     videoId: string
-    opts?: { playerVars?: { list?: string; listType?: string } }
+    opts?: { playerVars?: { autoplay?: number; list?: string; listType?: string } }
     onReady?: (e: { target: unknown }) => void
     onEnd?: () => void
     onError?: () => void
@@ -29,6 +29,7 @@ vi.mock('react-youtube', () => ({
       <div
         data-testid="yt-iframe"
         data-video-id={props.videoId}
+        data-autoplay={String(props.opts?.playerVars?.autoplay ?? '')}
         data-playlist-id={props.opts?.playerVars?.list ?? ''}
       />
     )
@@ -63,6 +64,12 @@ describe('YouTubePlayer', () => {
   it('isPlaying=true のとき playVideo を呼ぶ', () => {
     render(<YouTubePlayer {...baseProps} isPlaying={true} />)
     expect(mockPlayVideo).toHaveBeenCalled()
+  })
+
+  it('isPlaying=true で videoId が変わったとき次の動画を自動再生する設定を渡す', () => {
+    const { rerender } = render(<YouTubePlayer {...baseProps} isPlaying={true} />)
+    rerender(<YouTubePlayer {...baseProps} videoId="nextVideoId" isPlaying={true} />)
+    expect(screen.getByTestId('yt-iframe')).toHaveAttribute('data-autoplay', '1')
   })
 
   it('isPlaying=false のとき pauseVideo を呼ぶ', () => {
@@ -108,18 +115,11 @@ describe('YouTubePlayer', () => {
     expect(screen.getByRole('button', { name: '次へ' })).toBeDisabled()
   })
 
-  it('onError 発火でエラーメッセージ表示', () => {
-    render(<YouTubePlayer {...baseProps} />)
+  it('onError 発火で onError prop を呼ぶ', () => {
+    const onError = vi.fn()
+    render(<YouTubePlayer {...baseProps} onError={onError} />)
     act(() => { ytProps.onError?.() })
-    expect(screen.getByRole('alert')).toHaveTextContent('再生できません')
-  })
-
-  it('videoId 変更でエラーメッセージをリセット', async () => {
-    const { rerender } = render(<YouTubePlayer {...baseProps} />)
-    act(() => { ytProps.onError?.() })
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    rerender(<YouTubePlayer {...baseProps} videoId="newVideoId" />)
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onError).toHaveBeenCalledOnce()
   })
 
   it('playlistId が渡されたとき data-playlist-id が設定される', () => {
@@ -136,35 +136,5 @@ describe('YouTubePlayer', () => {
       />
     )
     expect(screen.getByTestId('yt-iframe')).toHaveAttribute('data-playlist-id', 'PLxxx')
-  })
-
-  it('playlistId 変更でエラーメッセージをリセット', () => {
-    const { rerender } = render(
-      <YouTubePlayer
-        playlistId="PLxxx"
-        isPlaying={false}
-        onPlayToggle={vi.fn()}
-        onEnded={vi.fn()}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        hasPrev={false}
-        hasNext={false}
-      />
-    )
-    act(() => { ytProps.onError?.() })
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    rerender(
-      <YouTubePlayer
-        playlistId="PLyyy"
-        isPlaying={false}
-        onPlayToggle={vi.fn()}
-        onEnded={vi.fn()}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        hasPrev={false}
-        hasNext={false}
-      />
-    )
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })

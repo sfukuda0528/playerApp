@@ -1,6 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MusicPanel from './MusicPanel'
 import type { MusicLink } from '../types/session'
 
@@ -8,6 +8,8 @@ const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
   mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
+  mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
+  mockAmbientPlayer,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -22,6 +24,10 @@ const {
   capturedOptions: { onInsert: undefined as ((link: MusicLink, prevLinks: MusicLink[]) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
   mockError: { value: null as string | null },
+  mockAddLinks: vi.fn(),
+  mockFetchPlaylistItems: vi.fn(),
+  mockPlaylistError: { value: null as string | null },
+  mockAmbientPlayer: vi.fn(),
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
@@ -34,6 +40,7 @@ vi.mock('../hooks/useMusicLinks', () => ({
 vi.mock('../hooks/useAddMusicLink', () => ({
   useAddMusicLink: () => ({
     addLink: mockAddLink,
+    addLinks: mockAddLinks,
     deleteLink: mockDeleteLink,
     loading: false,
     error: mockError.value,
@@ -65,6 +72,10 @@ vi.mock('../hooks/useYouTubeVideoTitle', () => ({
 
 vi.mock('./YouTubePlayer', () => ({
   default: mockYouTubePlayer,
+}))
+
+vi.mock('./AmbientPlayer', () => ({
+  default: mockAmbientPlayer,
 }))
 
 vi.mock('@dnd-kit/core', () => ({
@@ -103,6 +114,13 @@ vi.mock('@dnd-kit/utilities', () => ({
   CSS: { Transform: { toString: () => '' } },
 }))
 
+vi.mock('../hooks/usePlaylistItems', () => ({
+  usePlaylistItems: () => ({
+    fetchPlaylistItems: mockFetchPlaylistItems,
+    error: mockPlaylistError.value,
+  }),
+}))
+
 const link1: MusicLink = {
   id: 'ml-1', session_id: 'sess-1', added_by_auth_id: 'uid-me',
   url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Never Gonna Give You Up',
@@ -128,11 +146,17 @@ describe('MusicPanel', () => {
     mockError.value = null
     capturedOptions.onInsert = undefined
     capturedOnDragEnd.fn = undefined
+    mockAddLinks.mockResolvedValue(true)
+    mockFetchPlaylistItems.mockResolvedValue([])
+    mockPlaylistError.value = null
     mockYouTubePlayer.mockImplementation(
       ({ videoId, isPlaying }: { videoId?: string; isPlaying: boolean }) => (
         <div data-testid="youtube-player" data-video-id={videoId} data-playing={String(isPlaying)} />
       )
     )
+    mockAmbientPlayer.mockImplementation(({ videoId }: { videoId: string }) => (
+      <div data-testid="ambient-player" data-video-id={videoId} />
+    ))
     mockAddLink.mockResolvedValue(true)
     mockDeleteLink.mockResolvedValue(true)
     mockReorder.mockResolvedValue(true)
@@ -140,19 +164,19 @@ describe('MusicPanel', () => {
 
   describe('キュー表示', () => {
     it('links が空のとき YouTubePlayer は表示されない', () => {
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
     })
 
     it('links があるとき YouTubePlayer に videoId が渡る', () => {
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-video-id', 'dQw4w9WgXcQ')
     })
 
     it('プレイリスト URL の link で playlistId が YouTubePlayer に渡る', () => {
       mockLinks.value = [playlistLink]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(mockYouTubePlayer).toHaveBeenCalledWith(
         expect.objectContaining({ playlistId: 'PLxxx', videoId: undefined }),
         undefined
@@ -192,11 +216,33 @@ describe('MusicPanel', () => {
       expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument()
     })
 
+    it('ホストには他人のリンクにも削除ボタンが表示される', () => {
+      mockLinks.value = [link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
+    })
+
     it('削除ボタンクリックで deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await userEvent.click(screen.getByRole('button', { name: '削除' }))
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('isHost=true かつ links が空のとき AmbientPlayer が表示される', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      expect(screen.getByTestId('ambient-player')).toBeInTheDocument()
+    })
+
+    it('isHost=true かつ links があるとき AmbientPlayer は表示されない', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
+    })
+
+    it('isHost=false かつ links が空のとき AmbientPlayer は表示されない', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
     })
   })
 
@@ -246,7 +292,7 @@ describe('MusicPanel', () => {
     it('検索ボタンクリックで search を呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await userEvent.type(screen.getByPlaceholderText('曲名・アーティスト名で検索'), 'テスト')
-      await userEvent.click(screen.getByRole('button', { name: '🔍' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索' }))
       expect(mockSearch).toHaveBeenCalledWith('テスト')
     })
 
@@ -265,12 +311,12 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('img')).toHaveAttribute('src', 'https://example.com/thumb.jpg')
     })
 
-    it('検索結果の「先頭に追加」ボタンで addLink を position=head で呼ぶ', async () => {
+    it('検索結果の「次に再生」ボタンで addLink を position=head で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -279,12 +325,12 @@ describe('MusicPanel', () => {
       )
     })
 
-    it('検索結果の「末尾に追加」ボタンで addLink を position=tail で呼ぶ', async () => {
+    it('検索結果の「キューに追加」ボタンで addLink を position=tail で呼ぶ', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
       ]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画をキューに追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1',
         'https://www.youtube.com/watch?v=vid-1',
@@ -302,7 +348,7 @@ describe('MusicPanel', () => {
         return false
       })
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生' }))
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await waitFor(() =>
         expect(screen.getByRole('alert')).toHaveTextContent('追加に失敗しました')
@@ -337,27 +383,27 @@ describe('MusicPanel', () => {
       expect(screen.getByText(/取得されたタイトル/)).toBeInTheDocument()
     })
 
-    it('「先頭に追加」クリックで addLink を position=head で呼ぶ', async () => {
+    it('「次に再生」クリックで addLink を position=head で呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await switchToUrlTab()
       await userEvent.type(
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://youtu.be/abc'
       )
-      await userEvent.click(screen.getByRole('button', { name: '先頭に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: '次に再生' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1', 'https://youtu.be/abc', expect.any(String), 'head'
       )
     })
 
-    it('「末尾に追加」クリックで addLink を position=tail で呼ぶ', async () => {
+    it('「キューに追加」クリックで addLink を position=tail で呼ぶ', async () => {
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await switchToUrlTab()
       await userEvent.type(
         screen.getByPlaceholderText('YouTube / YouTube Music URL'),
         'https://youtu.be/abc'
       )
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       expect(mockAddLink).toHaveBeenCalledWith(
         'sess-1', 'https://youtu.be/abc', expect.any(String), 'tail'
       )
@@ -368,15 +414,129 @@ describe('MusicPanel', () => {
       await switchToUrlTab()
       const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
       await userEvent.type(input, 'https://youtu.be/abc')
-      await userEvent.click(screen.getByRole('button', { name: '末尾に追加' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
       await waitFor(() => expect(input).toHaveValue(''))
     })
   })
 
+  describe('URL入力タブ - プレイリスト対応', () => {
+    const switchToUrlTab = async () => {
+      await userEvent.click(screen.getByRole('tab', { name: 'URL入力' }))
+    }
+
+    it('プレイリストURLでキューに追加: fetchPlaylistItems を呼び addLinks を呼ぶ（addLink は呼ばない）', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([
+        { videoId: 'vid-1', title: '動画1' },
+        { videoId: 'vid-2', title: '動画2' },
+      ])
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
+      await waitFor(() => expect(mockFetchPlaylistItems).toHaveBeenCalledWith('PLxxx'))
+      expect(mockAddLinks).toHaveBeenCalledWith(
+        'sess-1',
+        [
+          { url: 'https://www.youtube.com/watch?v=vid-1', title: '動画1' },
+          { url: 'https://www.youtube.com/watch?v=vid-2', title: '動画2' },
+        ],
+        'tail',
+        undefined,
+        undefined
+      )
+      expect(mockAddLink).not.toHaveBeenCalled()
+    })
+
+    it('プレイリスト取得中に「プレイリスト取得中...」を表示する', async () => {
+      let resolveItems!: (v: { videoId: string; title: string }[]) => void
+      mockFetchPlaylistItems.mockReturnValue(
+        new Promise(resolve => { resolveItems = resolve })
+      )
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      act(() => { void userEvent.click(screen.getByRole('button', { name: 'キューに追加' })) })
+      await waitFor(() =>
+        expect(screen.getByText('プレイリスト取得中...')).toBeInTheDocument()
+      )
+      await act(async () => { resolveItems([]) })
+    })
+
+    it('プレイリスト追加中に「N件をキューに追加中...」を表示する', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([
+        { videoId: 'vid-1', title: '動画1' },
+        { videoId: 'vid-2', title: '動画2' },
+      ])
+      let resolveLinks!: (v: boolean) => void
+      mockAddLinks.mockReturnValue(new Promise(resolve => { resolveLinks = resolve }))
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      act(() => { void userEvent.click(screen.getByRole('button', { name: 'キューに追加' })) })
+      await waitFor(() =>
+        expect(screen.getByText('2件をキューに追加中...')).toBeInTheDocument()
+      )
+      await act(async () => { resolveLinks(true) })
+    })
+
+    it('プレイリスト追加成功後: URL入力フィールドがクリアされる', async () => {
+      mockFetchPlaylistItems.mockResolvedValue([{ videoId: 'vid-1', title: '動画1' }])
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
+      await userEvent.type(input, 'https://www.youtube.com/playlist?list=PLxxx')
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
+      await waitFor(() => expect(input).toHaveValue(''))
+    })
+
+    it('プレイリストが空のとき error を表示する', async () => {
+      mockFetchPlaylistItems.mockImplementation(async () => {
+        mockPlaylistError.value = 'プレイリストに動画がありません'
+        return null
+      })
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/playlist?list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('プレイリストに動画がありません')
+      )
+    })
+
+    it('watch?v=xxx&list=yyy は addLink を呼ぶ（プレイリスト展開しない）', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      await userEvent.type(
+        screen.getByPlaceholderText('YouTube / YouTube Music URL'),
+        'https://www.youtube.com/watch?v=abc&list=PLxxx'
+      )
+      await userEvent.click(screen.getByRole('button', { name: 'キューに追加' }))
+      await waitFor(() => expect(mockAddLink).toHaveBeenCalled())
+      expect(mockFetchPlaylistItems).not.toHaveBeenCalled()
+    })
+  })
+
   describe('再生状態', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
     it('handleEnded で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
@@ -384,17 +544,17 @@ describe('MusicPanel', () => {
 
     it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
       mockLinks.value = [link1, link2]
-      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       mockLinks.value = [link2]
-      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
     })
 
     it('空キューに最初の曲が INSERT されたとき isPlaying が true になる', () => {
       mockLinks.value = []
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       mockLinks.value = [link1]
       act(() => { capturedOptions.onInsert?.(link1, []) })
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
@@ -402,7 +562,7 @@ describe('MusicPanel', () => {
 
     it('INSERT 到着（未再生）で isPlaying が true になる', () => {
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(false)
       act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
@@ -411,7 +571,7 @@ describe('MusicPanel', () => {
     it('INSERT 到着時: onMusicAdd コールバックを呼ぶ', () => {
       const onMusicAdd = vi.fn()
       mockLinks.value = [link1]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" onMusicAdd={onMusicAdd} />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} onMusicAdd={onMusicAdd} />)
       act(() => { capturedOptions.onInsert?.(link2, [link1]) })
       expect(onMusicAdd).toHaveBeenCalledWith(link2)
     })
@@ -419,26 +579,84 @@ describe('MusicPanel', () => {
     it('先頭に INSERT されたとき currentIndex が +1 される（再生中の曲が変わらない）', () => {
       const newLink: MusicLink = {
         id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-other',
-        url: 'https://youtu.be/new', title: '先頭に追加される曲',
+        url: 'https://youtu.be/new', title: '次に再生される曲',
         sort_order: 0, created_at: '2026-04-26T10:02:00Z',
       }
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       // 初期状態: currentIndex=0, link1 が再生中
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
 
       // newLink が先頭（sort_order=0）に挿入される
-      // prevLinks=[link1, link2], newLink を先頭に追加 → insertedAt=0 → currentIndex: 0→1
+      // prevLinks=[link1, link2], newLink を次に再生 → insertedAt=0 → currentIndex: 0→1
       act(() => { capturedOptions.onInsert?.(newLink, [link1, link2]) })
 
       // links も先頭にnewLinkが追加された状態に更新
       mockLinks.value = [newLink, link1, link2]
-      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
 
       // currentIndex=1 になっているので link1（index=1）が aria-current
       const items = screen.getAllByRole('listitem')
       expect(items[1]).toHaveAttribute('aria-current', 'true')
+    })
+
+    it('onError 発火で deleteLink を呼ぶ', () => {
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('onError 発火でスキップトーストが表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(screen.getByRole('status')).toHaveTextContent('再生できないためスキップしました')
+    })
+
+    it('スキップトーストは3秒後に消える', () => {
+      vi.useFakeTimers()
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
+      act(() => { onError() })
+      expect(screen.getByRole('status')).toBeInTheDocument()
+      act(() => { vi.advanceTimersByTime(3000) })
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('レイアウト順序', () => {
+    it('Tabsエリアがキューリストより前（上）に表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const tabsList = screen.getByRole('tablist')
+      const queueItem = screen.getByRole('listitem')
+      expect(
+        tabsList.compareDocumentPosition(queueItem) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy()
+    })
+  })
+
+  describe('非ホスト（isHost=false）', () => {
+    it('links があっても YouTubePlayer が表示されない', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
+    })
+
+    it('検索タブが表示される', () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.getByPlaceholderText('曲名・アーティスト名で検索')).toBeInTheDocument()
+    })
+
+    it('キューが表示される', () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={false} />)
+      expect(screen.getByText('Never Gonna Give You Up')).toBeInTheDocument()
     })
   })
 })

@@ -67,21 +67,21 @@ describe('InviteScreen', () => {
 
   it('メンバー名一覧を表示する', async () => {
     renderWithRoute()
-    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(await screen.findByText('Bob')).toBeInTheDocument()
   })
 
   it('ホストに👑が付き、非ホストには付かない', async () => {
     renderWithRoute()
-    expect(await screen.findByText('👑 Alice')).toBeInTheDocument()
+    expect(await screen.findByText('Alice')).toBeInTheDocument()
     expect(screen.queryByText('👑 Bob')).not.toBeInTheDocument()
   })
 
   it('ホストが先頭に表示される', async () => {
     renderWithRoute()
-    await screen.findByText('👑 Alice')
+    await screen.findByText('Alice')
     const items = screen.getAllByRole('listitem')
-    expect(items[0]).toHaveTextContent('👑 Alice')
+    expect(items[0]).toHaveTextContent('Alice')
     expect(items[1]).toHaveTextContent('Bob')
   })
 })

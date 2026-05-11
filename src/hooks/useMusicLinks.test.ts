@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useMusicLinks } from './useMusicLinks'
 import type { MusicLink } from '../types/session'
 
-const { mockOn, mockChannel, mockRemoveChannel, mockInitialFetch } = vi.hoisted(() => ({
+const { mockOn, mockSubscribe, mockChannel, mockRemoveChannel, mockInitialFetch } = vi.hoisted(() => ({
   mockOn: vi.fn(),
+  mockSubscribe: vi.fn(),
   mockChannel: vi.fn(),
   mockRemoveChannel: vi.fn(),
   mockInitialFetch: vi.fn(),
@@ -38,11 +39,16 @@ describe('useMusicLinks', () => {
     vi.clearAllMocks()
     handlers = []
     mockInitialFetch.mockResolvedValue({ data: [link1], error: null })
+    const channelApi = { on: mockOn, subscribe: mockSubscribe }
     mockOn.mockImplementation((_event: string, _filter: unknown, handler: (payload: unknown) => void) => {
       handlers.push(handler)
-      return { on: mockOn, subscribe: vi.fn() }
+      return channelApi
     })
-    mockChannel.mockReturnValue({ on: mockOn })
+    mockSubscribe.mockImplementation((callback?: (status: string) => void) => {
+      callback?.('SUBSCRIBED')
+      return channelApi
+    })
+    mockChannel.mockReturnValue(channelApi)
   })
 
   it('初期取得: 既存リンクリストを返す', async () => {
@@ -60,6 +66,32 @@ describe('useMusicLinks', () => {
     handlers[0]({ new: link2 })
     await waitFor(() => expect(result.current.links).toHaveLength(2))
     expect(result.current.links[1].id).toBe('ml-2')
+  })
+
+  it('初期取得は Realtime 購読確立後に開始する', async () => {
+    mockSubscribe.mockImplementation(() => ({ on: mockOn, subscribe: mockSubscribe }))
+
+    const { result } = renderHook(() => useMusicLinks('sess-1'))
+
+    expect(mockInitialFetch).not.toHaveBeenCalled()
+    expect(result.current.loading).toBe(true)
+  })
+
+  it('初期取得中に届いた INSERT を fetch 結果で消さない', async () => {
+    let resolveFetch: (value: { data: MusicLink[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => useMusicLinks('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    handlers[0]({ new: link2 })
+    await waitFor(() => expect(result.current.links.map((link) => link.id)).toEqual(['ml-2']))
+
+    resolveFetch({ data: [link1], error: null })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.links.map((link) => link.id)).toEqual(['ml-1', 'ml-2'])
   })
 
   it('Realtime INSERT: sort_order が小さいリンクは先頭に挿入される', async () => {
