@@ -339,6 +339,37 @@ describe('MusicPanel', () => {
       )
     })
 
+    it('検索結果のモバイル用＋ボタンを押すと追加方法を表示する', async () => {
+      mockSearchResults.value = [
+        { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
+      ]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      expect(screen.queryByTestId('mobile-search-actions-vid-1')).not.toBeInTheDocument()
+
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
+
+      const actions = screen.getByTestId('mobile-search-actions-vid-1')
+      expect(actions).toHaveTextContent('次に再生')
+      expect(actions).toHaveTextContent('キューに追加')
+    })
+
+    it('検索結果のモバイル追加方法から次に再生へ追加できる', async () => {
+      mockSearchResults.value = [
+        { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },
+      ]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
+
+      await userEvent.click(screen.getByRole('button', { name: '検索結果動画を次に再生（モバイル）' }))
+
+      expect(mockAddLink).toHaveBeenCalledWith(
+        'sess-1',
+        'https://www.youtube.com/watch?v=vid-1',
+        '検索結果動画',
+        'head'
+      )
+    })
+
     it('addLink 失敗時に error を表示する', async () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: '' },

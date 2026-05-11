@@ -8,7 +8,7 @@ import {
   faGripVertical, faXmark, faMagnifyingGlass, faList,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
-import { ListStart, ListEnd } from 'lucide-react'
+import { ListStart, ListEnd, Plus } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
@@ -128,6 +128,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
   const [isPlaying, setIsPlaying] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [urlInput, setUrlInput] = useState('')
+  const [expandedSearchActionId, setExpandedSearchActionId] = useState<string | null>(null)
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
 
@@ -349,7 +350,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                 {results.map((item) => (
                   <li
                     key={item.videoId}
-                    className="flex items-center gap-2 rounded-xl px-2 py-2 bg-white active:shadow-md transition-shadow duration-150"
+                    className="flex items-start gap-2 rounded-xl px-2 py-2 bg-white active:shadow-md transition-shadow duration-150"
                     style={{ boxShadow: '0 2px 8px rgba(124,74,30,0.09)', border: '1px solid rgba(240,200,150,0.35)' }}
                   >
                     <img
@@ -357,13 +358,61 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       alt={item.title}
                       className="w-12 h-9 object-cover rounded-lg flex-shrink-0"
                     />
-                    <span className="flex-1 text-xs text-camp-dark truncate">{item.title}</span>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      <span className="block text-xs text-camp-dark truncate">{item.title}</span>
+                      {expandedSearchActionId === item.videoId && (
+                        <div
+                          id={`mobile-search-actions-${item.videoId}`}
+                          data-testid={`mobile-search-actions-${item.videoId}`}
+                          className="sm:hidden flex gap-1.5 mt-2"
+                        >
+                          <button
+                            type="button"
+                            aria-label={`${item.title}を次に再生（モバイル）`}
+                            onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
+                            disabled={loading}
+                            className="flex-1 justify-center text-xs text-white font-bold px-2 py-1.5 rounded-lg disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                            style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+                          >
+                            <ListStart size={13} />
+                            次に再生
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`${item.title}をキューに追加（モバイル）`}
+                            onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
+                            disabled={loading}
+                            className="flex-1 justify-center text-xs text-white font-bold px-2 py-1.5 rounded-lg disabled:opacity-40 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                            style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+                          >
+                            <ListEnd size={13} />
+                            キューに追加
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${item.title}の追加方法を表示`}
+                      aria-expanded={expandedSearchActionId === item.videoId}
+                      aria-controls={`mobile-search-actions-${item.videoId}`}
+                      onClick={() =>
+                        setExpandedSearchActionId((current) => (
+                          current === item.videoId ? null : item.videoId
+                        ))
+                      }
+                      disabled={loading}
+                      className="sm:hidden text-white w-8 h-8 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
+                    >
+                      <Plus size={16} />
+                    </button>
                     <button
                       type="button"
                       aria-label={`${item.title}を次に再生`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'head')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                      className="hidden sm:flex text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
                       <ListStart size={13} />
@@ -374,7 +423,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       aria-label={`${item.title}をキューに追加`}
                       onClick={() => void handleAddFromSearch(item.videoId, item.title, 'tail')}
                       disabled={loading}
-                      className="text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 flex items-center gap-1"
+                      className="hidden sm:flex text-xs text-white font-bold px-2 py-1 rounded-lg disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all duration-150 items-center gap-1"
                       style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
                     >
                       <ListEnd size={13} />
