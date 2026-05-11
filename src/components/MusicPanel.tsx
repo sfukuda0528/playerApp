@@ -493,14 +493,6 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
             className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl"
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold text-camp-amber uppercase tracking-wider">
-                  追加方法
-                </p>
-                <h2 id="search-action-dialog-title" className="text-sm font-bold text-camp-dark mt-1 leading-snug">
-                  {selectedSearchItem.title}の追加方法
-                </h2>
-              </div>
               <button
                 type="button"
                 aria-label="閉じる"
