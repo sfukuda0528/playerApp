@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCrown, faPlay } from '@fortawesome/free-solid-svg-icons'
 import { useParticipants } from '../hooks/useParticipants'
+import { supabase } from '../lib/supabase'
 import type { Session } from '../types/session'
 
 export default function InviteScreen() {
@@ -13,6 +14,8 @@ export default function InviteScreen() {
   const navigate = useNavigate()
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
+  const [isHost, setIsHost] = useState<boolean | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { participants } = useParticipants(sessionId ?? '')
 
   const MAX_PARTICIPANTS = 4
@@ -31,7 +34,40 @@ export default function InviteScreen() {
     }
   }, [joinUrl])
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        setCurrentUserId(null)
+        setIsHost(false)
+        return
+      }
+      setCurrentUserId(user.id)
+      setIsHost(session?.host_auth_id === user.id)
+    })
+  }, [session?.host_auth_id])
+
+  useEffect(() => {
+    if (!sessionId || !session?.started_at || isHost !== false) return
+    navigate(`/session/${sessionId}`, { state: { session } })
+  }, [isHost, navigate, session, sessionId])
+
   if (!sessionId) return null
+
+  const handleStart = async () => {
+    const startedAt = new Date().toISOString()
+    const startedSession = { ...session, started_at: startedAt } as Session
+    const { error } = await supabase
+      .from('sessions')
+      .update({ started_at: startedAt })
+      .eq('id', sessionId)
+
+    if (error) {
+      console.error('Failed to start session:', error)
+      return
+    }
+
+    navigate(`/session/${sessionId}`, { state: { session: startedSession } })
+  }
 
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'linear-gradient(170deg, #fdf6ec, #fff8f0)' }}>
@@ -79,14 +115,17 @@ export default function InviteScreen() {
             <div className="mt-4 flex items-center gap-2">
               {sortedParticipants.map((p) => {
                 const isParticipantHost = p.auth_id === session?.host_auth_id
+                const isCurrentUser = p.auth_id === currentUserId
                 const initial = p.name.trim().charAt(0).toUpperCase() || '?'
 
                 return (
                   <span
                     key={p.id}
-                    aria-label={`${p.name}のアバター`}
+                    aria-label={`${p.name}のアバター${isCurrentUser ? '（あなた）' : ''}`}
                     className={`relative grid h-11 w-11 place-items-center rounded-full border-2 text-sm font-black ${
-                      isParticipantHost
+                      isCurrentUser
+                        ? 'border-camp-orange bg-white text-camp-orange ring-2 ring-camp-orange/40'
+                        : isParticipantHost
                         ? 'border-camp-cream bg-camp-orange text-camp-cream'
                         : 'border-camp-cream/70 bg-camp-wheat text-camp-brown'
                     }`}
@@ -114,10 +153,23 @@ export default function InviteScreen() {
             <ul className="mt-4 space-y-2">
               {sortedParticipants.map((p) => {
                 const isParticipantHost = p.auth_id === session?.host_auth_id
+                const isCurrentUser = p.auth_id === currentUserId
 
                 return (
-                  <li key={p.id} className="flex items-center justify-between gap-3 rounded-xl bg-camp-cream/10 px-3 py-2 text-sm">
-                    <span className="min-w-0 truncate font-bold">{p.name}</span>
+                  <li
+                    key={p.id}
+                    className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${
+                      isCurrentUser ? 'bg-white text-camp-orange' : 'bg-camp-cream/10'
+                    }`}
+                  >
+                    <span className={`min-w-0 truncate font-bold ${isCurrentUser ? 'text-camp-orange' : ''}`}>
+                      {p.name}
+                    </span>
+                    {isCurrentUser && (
+                      <span className="rounded-full bg-camp-orange/15 px-2 py-1 text-[11px] font-bold text-camp-orange">
+                        あなた
+                      </span>
+                    )}
                     {isParticipantHost && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-camp-cream/15 px-2 py-1 text-[11px] font-bold text-camp-wheat">
                         <FontAwesomeIcon icon={faCrown} className="text-[10px]" />
@@ -130,17 +182,23 @@ export default function InviteScreen() {
             </ul>
           </section>
         </div>
-        <button
-          onClick={() => navigate(`/session/${sessionId}`, { state: { session } })}
-          className="w-full max-w-xs text-white font-bold py-3 rounded-xl active:scale-95 transition-all duration-150 flex items-center justify-center gap-2"
-          style={{
-            background: 'linear-gradient(135deg, #e07b39, #c8601a)',
-            boxShadow: '0 6px 16px rgba(224,123,57,0.4)',
-          }}
-        >
-          <FontAwesomeIcon icon={faPlay} />
-          スタート
-        </button>
+        {isHost ? (
+          <button
+            onClick={handleStart}
+            className="w-full max-w-xs text-white font-bold py-3 rounded-xl active:scale-95 transition-all duration-150 flex items-center justify-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #e07b39, #c8601a)',
+              boxShadow: '0 6px 16px rgba(224,123,57,0.4)',
+            }}
+          >
+            <FontAwesomeIcon icon={faPlay} />
+            スタート
+          </button>
+        ) : isHost === false ? (
+          <p className="w-full max-w-xs rounded-xl bg-white px-4 py-3 text-center text-sm font-bold text-camp-brown shadow-sm">
+            ホストの開始を待っています
+          </p>
+        ) : null}
       </main>
     </div>
   )

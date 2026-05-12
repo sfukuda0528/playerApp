@@ -18,7 +18,10 @@ export default function SessionJoin() {
     const result = await joinSession(code.trim(), name.trim())
     if (result) {
       saveLastSession(result.session)
-      navigate(`/session/${result.session.id}`, { state: { session: result.session } })
+      const path = result.session.started_at
+        ? `/session/${result.session.id}`
+        : `/invite/${result.session.id}`
+      navigate(path, { state: { session: result.session } })
     }
   }
 

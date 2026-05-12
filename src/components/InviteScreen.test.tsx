@@ -4,8 +4,10 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import InviteScreen from './InviteScreen'
 
-const { mockNavigate } = vi.hoisted(() => ({
+const { mockNavigate, mockGetUser, mockUpdateSession } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
+  mockGetUser: vi.fn(),
+  mockUpdateSession: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -22,6 +24,16 @@ vi.mock('../hooks/useParticipants', () => ({
       { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
     ],
   }),
+}))
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: { getUser: mockGetUser },
+    from: () => ({
+      update: (values: unknown) => ({
+        eq: (column: string, value: string) => mockUpdateSession(values, column, value),
+      }),
+    }),
+  },
 }))
 
 const fakeSession = {
@@ -40,7 +52,11 @@ function renderWithRoute() {
 }
 
 describe('InviteScreen', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-alice' } }, error: null })
+    mockUpdateSession.mockResolvedValue({ data: null, error: null })
+  })
 
   it('6桁コードを表示する', async () => {
     renderWithRoute()
@@ -61,7 +77,7 @@ describe('InviteScreen', () => {
     renderWithRoute()
     expect(await screen.findByText('参加中')).toBeInTheDocument()
     expect(screen.getByText('空き枠 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('Aliceのアバター')).toHaveTextContent('A')
+    expect(screen.getByLabelText('Aliceのアバター（あなた）')).toHaveTextContent('A')
     expect(screen.getByLabelText('Bobのアバター')).toHaveTextContent('B')
   })
 
@@ -69,8 +85,35 @@ describe('InviteScreen', () => {
     renderWithRoute()
     await userEvent.click(await screen.findByRole('button', { name: 'スタート' }))
     expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1', {
-      state: { session: fakeSession },
+      state: { session: expect.objectContaining({ ...fakeSession, started_at: expect.any(String) }) },
     })
+  })
+
+  it('スタートボタンクリックで開始時刻を保存する', async () => {
+    renderWithRoute()
+    await userEvent.click(await screen.findByRole('button', { name: 'スタート' }))
+
+    expect(mockUpdateSession).toHaveBeenCalledWith(
+      expect.objectContaining({ started_at: expect.any(String) }),
+      'id',
+      'sess-1'
+    )
+  })
+
+  it('非ホストにはスタートボタンを表示しない', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } }, error: null })
+    renderWithRoute()
+
+    expect(await screen.findByText('ホストの開始を待っています')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'スタート' })).not.toBeInTheDocument()
+  })
+
+  it('自分のアバターと名前を強調表示する', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } }, error: null })
+    renderWithRoute()
+
+    expect(await screen.findByLabelText('Bobのアバター（あなた）')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toHaveClass('text-camp-orange')
   })
 
   it('メンバー名一覧を表示する', async () => {
