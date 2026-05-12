@@ -368,14 +368,27 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
 
             <TabsContent value="search" className="flex flex-col gap-2 mt-2">
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
-                  placeholder="曲名・アーティスト名で検索"
-                  className="flex-1 bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
+                    placeholder="曲名・アーティスト名で検索"
+                    className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl pl-3 pr-9 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label="検索欄をクリア"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full text-camp-brown/45 hover:text-camp-brown hover:bg-camp-wheat/30 active:scale-95 transition-all flex items-center justify-center"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   aria-label="検索"
@@ -447,14 +460,30 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
             </TabsContent>
 
             <TabsContent value="url" className="flex flex-col gap-2 mt-2">
-              <input
-                type="text"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
-                placeholder="YouTube / YouTube Music URL"
-                className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
+                  placeholder="YouTube / YouTube Music URL"
+                  className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl pl-3 pr-9 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
+                />
+                {urlInput && (
+                  <button
+                    type="button"
+                    aria-label="URL入力欄をクリア"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setUrlInput('')
+                      clearTitle()
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full text-camp-brown/45 hover:text-camp-brown hover:bg-camp-wheat/30 active:scale-95 transition-all flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                )}
+              </div>
               {titleLoading && (
                 <p className="text-camp-wheat text-xs">タイトル取得中...</p>
               )}

@@ -309,6 +309,16 @@ describe('MusicPanel', () => {
       expect(mockSearch).toHaveBeenCalledWith('テスト')
     })
 
+    it('検索欄の全削除ボタンで入力をクリアする', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const input = screen.getByPlaceholderText('曲名・アーティスト名で検索')
+      await userEvent.type(input, 'テスト')
+
+      await userEvent.click(screen.getByRole('button', { name: '検索欄をクリア' }))
+
+      expect(input).toHaveValue('')
+    })
+
     it('検索結果にサムネイルとタイトルを表示する', () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: 'https://example.com/thumb.jpg' },
@@ -415,6 +425,17 @@ describe('MusicPanel', () => {
       await userEvent.type(input, 'https://youtu.be/abc')
       await userEvent.tab()
       expect(mockFetchTitle).toHaveBeenCalledWith('https://youtu.be/abc')
+    })
+
+    it('URL入力欄の全削除ボタンで入力をクリアする', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
+      await userEvent.type(input, 'https://youtu.be/abc')
+
+      await userEvent.click(screen.getByRole('button', { name: 'URL入力欄をクリア' }))
+
+      expect(input).toHaveValue('')
     })
 
     it('取得済みタイトルを表示する', async () => {
