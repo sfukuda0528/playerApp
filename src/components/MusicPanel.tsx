@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faGripVertical, faXmark, faMagnifyingGlass, faList,
+  faGripVertical, faXmark, faMagnifyingGlass, faList, faChevronDown,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
 import { ListStart, ListEnd, Plus } from 'lucide-react'
@@ -314,6 +314,44 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
       )}
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <details
+          open
+          className="group rounded-xl p-3"
+          style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
+        >
+          <summary className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-1.5">
+              <FontAwesomeIcon icon={faList} className="text-xs" />
+              キュー
+              <span className="text-camp-brown/45 font-semibold normal-case tracking-normal">
+                {links.length}曲
+              </span>
+            </span>
+            <FontAwesomeIcon icon={faChevronDown} className="text-[10px] text-camp-brown/40 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="mt-2">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                <ul className="flex flex-col gap-2">
+                  {links.map((link, index) => (
+                    <SortableQueueItem
+                      key={link.id}
+                      link={link}
+                      index={index}
+                      currentIndex={currentIndex}
+                      currentUserId={currentUserId}
+                      isHost={isHost}
+                      loading={loading}
+                      onDelete={() => handleDelete(link, index)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          </div>
+        </details>
+
         <div
           className="bg-white rounded-xl p-3"
           style={{ boxShadow: '0 2px 10px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.35)' }}
@@ -453,35 +491,6 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
               )}
             </TabsContent>
           </Tabs>
-        </div>
-
-        <div
-          className="rounded-xl p-3 flex flex-col gap-2"
-          style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
-        >
-          <span className="text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faList} className="text-xs" />
-            キュー
-          </span>
-
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
-              <ul className="flex flex-col gap-2">
-                {links.map((link, index) => (
-                  <SortableQueueItem
-                    key={link.id}
-                    link={link}
-                    index={index}
-                    currentIndex={currentIndex}
-                    currentUserId={currentUserId}
-                    isHost={isHost}
-                    loading={loading}
-                    onDelete={() => handleDelete(link, index)}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
-          </DndContext>
         </div>
       </div>
       {selectedSearchItem && (

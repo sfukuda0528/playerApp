@@ -664,14 +664,24 @@ describe('MusicPanel', () => {
   })
 
   describe('レイアウト順序', () => {
-    it('Tabsエリアがキューリストより前（上）に表示される', () => {
+    it('キューリストがTabsエリアより前（上）に表示される', () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       const tabsList = screen.getByRole('tablist')
       const queueItem = screen.getByRole('listitem')
       expect(
-        tabsList.compareDocumentPosition(queueItem) & Node.DOCUMENT_POSITION_FOLLOWING
+        queueItem.compareDocumentPosition(tabsList) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy()
+    })
+
+    it('キューは初期表示で開いたアコーディオンとして表示され、クリックで閉じられる', async () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const queueAccordion = screen.getByText('キュー').closest('details')
+      expect(queueAccordion).toHaveAttribute('open')
+
+      await userEvent.click(screen.getByText('キュー'))
+      expect(queueAccordion).not.toHaveAttribute('open')
     })
   })
 
