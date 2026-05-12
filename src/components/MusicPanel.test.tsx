@@ -7,7 +7,7 @@ import type { MusicLink } from '../types/session'
 const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
-  mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
+  mockReorder, mockOptimisticReorder, mockOptimisticDelete, capturedOptions, capturedOnDragEnd, mockError,
   mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
   mockAmbientPlayer,
 } = vi.hoisted(() => ({
@@ -21,6 +21,7 @@ const {
   mockFetchedTitle: { value: null as string | null },
   mockReorder: vi.fn(),
   mockOptimisticReorder: vi.fn(),
+  mockOptimisticDelete: vi.fn(),
   capturedOptions: { onInsert: undefined as ((link: MusicLink, prevLinks: MusicLink[]) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
   mockError: { value: null as string | null },
@@ -33,7 +34,13 @@ const {
 vi.mock('../hooks/useMusicLinks', () => ({
   useMusicLinks: (_sessionId: string, options?: { onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void }) => {
     capturedOptions.onInsert = options?.onInsert
-    return { links: mockLinks.value, loading: false, error: null, optimisticReorder: mockOptimisticReorder }
+    return {
+      links: mockLinks.value,
+      loading: false,
+      error: null,
+      optimisticReorder: mockOptimisticReorder,
+      optimisticDelete: mockOptimisticDelete,
+    }
   },
 }))
 
@@ -302,6 +309,16 @@ describe('MusicPanel', () => {
       expect(mockSearch).toHaveBeenCalledWith('テスト')
     })
 
+    it('検索欄の全削除ボタンで入力をクリアする', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const input = screen.getByPlaceholderText('曲名・アーティスト名で検索')
+      await userEvent.type(input, 'テスト')
+
+      await userEvent.click(screen.getByRole('button', { name: '検索欄をクリア' }))
+
+      expect(input).toHaveValue('')
+    })
+
     it('検索結果にサムネイルとタイトルを表示する', () => {
       mockSearchResults.value = [
         { videoId: 'vid-1', title: '検索結果動画', thumbnail: 'https://example.com/thumb.jpg' },
@@ -348,7 +365,7 @@ describe('MusicPanel', () => {
 
       await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
 
-      const dialog = screen.getByRole('dialog', { name: '検索結果動画の追加方法' })
+      const dialog = screen.getByRole('dialog')
       expect(dialog).toHaveTextContent('検索結果動画')
       expect(dialog).toHaveTextContent('検索チャンネル')
       expect(dialog).toHaveTextContent('次に再生')
@@ -408,6 +425,17 @@ describe('MusicPanel', () => {
       await userEvent.type(input, 'https://youtu.be/abc')
       await userEvent.tab()
       expect(mockFetchTitle).toHaveBeenCalledWith('https://youtu.be/abc')
+    })
+
+    it('URL入力欄の全削除ボタンで入力をクリアする', async () => {
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await switchToUrlTab()
+      const input = screen.getByPlaceholderText('YouTube / YouTube Music URL')
+      await userEvent.type(input, 'https://youtu.be/abc')
+
+      await userEvent.click(screen.getByRole('button', { name: 'URL入力欄をクリア' }))
+
+      expect(input).toHaveValue('')
     })
 
     it('取得済みタイトルを表示する', async () => {
@@ -576,6 +604,16 @@ describe('MusicPanel', () => {
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
     })
 
+    it('handleEnded は削除成功後にキューから即時除去する', async () => {
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
+
+      await act(async () => { await onEnded() })
+
+      expect(mockOptimisticDelete).toHaveBeenCalledWith('ml-1')
+    })
+
     it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
       mockLinks.value = [link1, link2]
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
@@ -664,14 +702,24 @@ describe('MusicPanel', () => {
   })
 
   describe('レイアウト順序', () => {
-    it('Tabsエリアがキューリストより前（上）に表示される', () => {
+    it('キューリストがTabsエリアより前（上）に表示される', () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       const tabsList = screen.getByRole('tablist')
       const queueItem = screen.getByRole('listitem')
       expect(
-        tabsList.compareDocumentPosition(queueItem) & Node.DOCUMENT_POSITION_FOLLOWING
+        queueItem.compareDocumentPosition(tabsList) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy()
+    })
+
+    it('キューは初期表示で開いたアコーディオンとして表示され、クリックで閉じられる', async () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      const queueAccordion = screen.getByText('キュー').closest('details')
+      expect(queueAccordion).toHaveAttribute('open')
+
+      await userEvent.click(screen.getByText('キュー'))
+      expect(queueAccordion).not.toHaveAttribute('open')
     })
   })
 

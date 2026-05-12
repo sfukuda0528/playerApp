@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  faGripVertical, faXmark, faMagnifyingGlass, faList,
+  faGripVertical, faXmark, faMagnifyingGlass, faList, faChevronDown,
 } from '@fortawesome/free-solid-svg-icons'
 import { faYoutube } from '@fortawesome/free-brands-svg-icons'
 import { ListStart, ListEnd, Plus } from 'lucide-react'
@@ -101,7 +101,7 @@ function SortableQueueItem({
 }
 
 export default function MusicPanel({ sessionId, currentUserId, isHost = false, onMusicAdd }: Props) {
-  const { links, optimisticReorder } = useMusicLinks(sessionId, {
+  const { links, optimisticReorder, optimisticDelete } = useMusicLinks(sessionId, {
     onInsert: (link, prevLinks) => {
       const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
       const insertedAt = newSortedLinks.findIndex(l => l.id === link.id)
@@ -216,6 +216,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     const isCurrent = index === currentIndex
     const ok = await deleteLink(link.id)
     if (!ok) return
+    optimisticDelete(link.id)
     if (isCurrent) {
       setIsPlaying(false)
       setCurrentIndex(0)
@@ -226,14 +227,17 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
 
   const handleEnded = async () => {
     if (!currentLink) return
-    await deleteLink(currentLink.id)
+    const ok = await deleteLink(currentLink.id)
+    if (ok) optimisticDelete(currentLink.id)
   }
 
   const handleError = () => {
     if (!currentLink) return
     if (skipToastTimerRef.current) clearTimeout(skipToastTimerRef.current)
     setSkipToast(true)
-    void deleteLink(currentLink.id)
+    void deleteLink(currentLink.id).then((ok) => {
+      if (ok) optimisticDelete(currentLink.id)
+    })
     skipToastTimerRef.current = setTimeout(() => setSkipToast(false), 3000)
   }
 
@@ -314,6 +318,44 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
       )}
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <details
+          open
+          className="group rounded-xl p-3"
+          style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
+        >
+          <summary className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-1.5">
+              <FontAwesomeIcon icon={faList} className="text-xs" />
+              キュー
+              <span className="text-camp-brown/45 font-semibold normal-case tracking-normal">
+                {links.length}曲
+              </span>
+            </span>
+            <FontAwesomeIcon icon={faChevronDown} className="text-[10px] text-camp-brown/40 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="mt-2">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                <ul className="flex flex-col gap-2">
+                  {links.map((link, index) => (
+                    <SortableQueueItem
+                      key={link.id}
+                      link={link}
+                      index={index}
+                      currentIndex={currentIndex}
+                      currentUserId={currentUserId}
+                      isHost={isHost}
+                      loading={loading}
+                      onDelete={() => handleDelete(link, index)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          </div>
+        </details>
+
         <div
           className="bg-white rounded-xl p-3"
           style={{ boxShadow: '0 2px 10px rgba(124,74,30,0.08)', border: '1px solid rgba(240,200,150,0.35)' }}
@@ -326,14 +368,27 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
 
             <TabsContent value="search" className="flex flex-col gap-2 mt-2">
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
-                  placeholder="曲名・アーティスト名で検索"
-                  className="flex-1 bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') void search(searchQuery) }}
+                    placeholder="曲名・アーティスト名で検索"
+                    className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl pl-3 pr-9 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label="検索欄をクリア"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full text-camp-brown/45 hover:text-camp-brown hover:bg-camp-wheat/30 active:scale-95 transition-all flex items-center justify-center"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   aria-label="検索"
@@ -405,14 +460,30 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
             </TabsContent>
 
             <TabsContent value="url" className="flex flex-col gap-2 mt-2">
-              <input
-                type="text"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
-                placeholder="YouTube / YouTube Music URL"
-                className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl px-3 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  onBlur={() => { if (urlInput && !extractPlaylistId(urlInput)) void fetchTitle(urlInput) }}
+                  placeholder="YouTube / YouTube Music URL"
+                  className="w-full bg-camp-warm-white border border-camp-wheat rounded-xl pl-3 pr-9 py-2 text-base text-camp-dark outline-none focus:border-camp-orange focus:ring-2 focus:ring-camp-orange/20 transition-all"
+                />
+                {urlInput && (
+                  <button
+                    type="button"
+                    aria-label="URL入力欄をクリア"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setUrlInput('')
+                      clearTitle()
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full text-camp-brown/45 hover:text-camp-brown hover:bg-camp-wheat/30 active:scale-95 transition-all flex items-center justify-center"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                )}
+              </div>
               {titleLoading && (
                 <p className="text-camp-wheat text-xs">タイトル取得中...</p>
               )}
@@ -453,35 +524,6 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
               )}
             </TabsContent>
           </Tabs>
-        </div>
-
-        <div
-          className="rounded-xl p-3 flex flex-col gap-2"
-          style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
-        >
-          <span className="text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <FontAwesomeIcon icon={faList} className="text-xs" />
-            キュー
-          </span>
-
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
-              <ul className="flex flex-col gap-2">
-                {links.map((link, index) => (
-                  <SortableQueueItem
-                    key={link.id}
-                    link={link}
-                    index={index}
-                    currentIndex={currentIndex}
-                    currentUserId={currentUserId}
-                    isHost={isHost}
-                    loading={loading}
-                    onDelete={() => handleDelete(link, index)}
-                  />
-                ))}
-              </ul>
-            </SortableContext>
-          </DndContext>
         </div>
       </div>
       {selectedSearchItem && (

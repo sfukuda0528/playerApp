@@ -1,10 +1,11 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { usePhotos } from './usePhotos'
 import type { Photo } from '../types/session'
 
-const { mockOn, mockChannel, mockRemoveChannel, mockInitialFetch } = vi.hoisted(() => ({
+const { mockOn, mockSubscribe, mockChannel, mockRemoveChannel, mockInitialFetch } = vi.hoisted(() => ({
   mockOn: vi.fn(),
+  mockSubscribe: vi.fn(),
   mockChannel: vi.fn(),
   mockRemoveChannel: vi.fn(),
   mockInitialFetch: vi.fn(),
@@ -36,11 +37,16 @@ describe('usePhotos', () => {
     vi.clearAllMocks()
     handlers = []
     mockInitialFetch.mockResolvedValue({ data: [photo1], error: null })
+    const channelApi = { on: mockOn, subscribe: mockSubscribe }
     mockOn.mockImplementation((_event: string, _filter: unknown, handler: (payload: unknown) => void) => {
       handlers.push(handler)
-      return { on: mockOn, subscribe: vi.fn() }
+      return channelApi
     })
-    mockChannel.mockReturnValue({ on: mockOn })
+    mockSubscribe.mockImplementation((callback?: (status: string) => void) => {
+      callback?.('SUBSCRIBED')
+      return channelApi
+    })
+    mockChannel.mockReturnValue(channelApi)
   })
 
   it('初期取得: 既存写真リストを返す', async () => {
@@ -55,9 +61,51 @@ describe('usePhotos', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     // handlers[0] = INSERT ハンドラ
-    handlers[0]({ new: photo2 })
+    act(() => { handlers[0]({ new: photo2 }) })
     await waitFor(() => expect(result.current.photos).toHaveLength(2))
     expect(result.current.photos[1].id).toBe('ph-2')
+  })
+
+  it('初期取得は Realtime 購読確立後に開始する', () => {
+    mockSubscribe.mockImplementation(() => ({ on: mockOn, subscribe: mockSubscribe }))
+
+    const { result } = renderHook(() => usePhotos('sess-1'))
+
+    expect(mockInitialFetch).not.toHaveBeenCalled()
+    expect(result.current.loading).toBe(true)
+  })
+
+  it('初期取得中に届いた INSERT を fetch 結果で消さない', async () => {
+    let resolveFetch: (value: { data: Photo[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => usePhotos('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    act(() => { handlers[0]({ new: photo2 }) })
+    await waitFor(() => expect(result.current.photos.map((photo) => photo.id)).toEqual(['ph-2']))
+
+    resolveFetch({ data: [photo1], error: null })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.photos.map((photo) => photo.id)).toEqual(['ph-1', 'ph-2'])
+  })
+
+  it('初期取得中に届いた DELETE を fetch 結果で復活させない', async () => {
+    let resolveFetch: (value: { data: Photo[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => usePhotos('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    act(() => { handlers[1]({ old: { id: 'ph-2' } }) })
+    resolveFetch({ data: [photo1, photo2], error: null })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.photos.map((photo) => photo.id)).toEqual(['ph-1'])
   })
 
   it('Realtime DELETE: 該当写真を除去する', async () => {
@@ -65,7 +113,7 @@ describe('usePhotos', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     // handlers[1] = DELETE ハンドラ
-    handlers[1]({ old: { id: 'ph-1' } })
+    act(() => { handlers[1]({ old: { id: 'ph-1' } }) })
     await waitFor(() => expect(result.current.photos).toHaveLength(0))
   })
 
@@ -79,7 +127,7 @@ describe('usePhotos', () => {
     const onInsert = vi.fn()
     const { result } = renderHook(() => usePhotos('sess-1', { onInsert }))
     await waitFor(() => expect(result.current.loading).toBe(false))
-    handlers[0]({ new: photo2 })
+    act(() => { handlers[0]({ new: photo2 }) })
     await waitFor(() => expect(onInsert).toHaveBeenCalledWith(photo2))
   })
 })

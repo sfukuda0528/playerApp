@@ -6,6 +6,7 @@ export interface Session {
   host_name: string
   host_auth_id: string | null
   status: SessionStatus
+  started_at?: string | null
   last_active_at: string
   inactivity_timeout_min: number
   created_at: string

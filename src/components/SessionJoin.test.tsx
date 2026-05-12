@@ -48,9 +48,27 @@ describe('SessionJoin', () => {
     expect(screen.getByRole('button', { name: '参加する' })).toBeDisabled()
   })
 
-  it('成功時: /session/:idへ遷移', async () => {
+  it('成功時: /invite/:idへ遷移', async () => {
     const fakeResult = {
       session: { id: 'sess-1', code: '472819' },
+      participant: { id: 'p-2' },
+    }
+    mockJoinSession.mockResolvedValue(fakeResult)
+
+    renderAtPath('/join/472819')
+    await userEvent.type(screen.getByPlaceholderText('ニックネーム'), 'Bob')
+    await userEvent.click(screen.getByRole('button', { name: '参加する' }))
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/invite/sess-1', {
+        state: { session: fakeResult.session },
+      })
+    )
+  })
+
+  it('開始済みセッションへの参加成功時: /session/:idへ遷移', async () => {
+    const fakeResult = {
+      session: { id: 'sess-1', code: '472819', started_at: '2026-05-13T00:00:00Z' },
       participant: { id: 'p-2' },
     }
     mockJoinSession.mockResolvedValue(fakeResult)
