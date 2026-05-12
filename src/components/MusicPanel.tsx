@@ -101,7 +101,7 @@ function SortableQueueItem({
 }
 
 export default function MusicPanel({ sessionId, currentUserId, isHost = false, onMusicAdd }: Props) {
-  const { links, optimisticReorder } = useMusicLinks(sessionId, {
+  const { links, optimisticReorder, optimisticDelete } = useMusicLinks(sessionId, {
     onInsert: (link, prevLinks) => {
       const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
       const insertedAt = newSortedLinks.findIndex(l => l.id === link.id)
@@ -216,6 +216,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     const isCurrent = index === currentIndex
     const ok = await deleteLink(link.id)
     if (!ok) return
+    optimisticDelete(link.id)
     if (isCurrent) {
       setIsPlaying(false)
       setCurrentIndex(0)
@@ -226,14 +227,17 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
 
   const handleEnded = async () => {
     if (!currentLink) return
-    await deleteLink(currentLink.id)
+    const ok = await deleteLink(currentLink.id)
+    if (ok) optimisticDelete(currentLink.id)
   }
 
   const handleError = () => {
     if (!currentLink) return
     if (skipToastTimerRef.current) clearTimeout(skipToastTimerRef.current)
     setSkipToast(true)
-    void deleteLink(currentLink.id)
+    void deleteLink(currentLink.id).then((ok) => {
+      if (ok) optimisticDelete(currentLink.id)
+    })
     skipToastTimerRef.current = setTimeout(() => setSkipToast(false), 3000)
   }
 

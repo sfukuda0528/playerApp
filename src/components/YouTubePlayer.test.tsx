@@ -10,6 +10,7 @@ const { mockPlayVideo, mockPauseVideo, ytProps } = vi.hoisted(() => ({
     onReady: undefined as ((e: { target: unknown }) => void) | undefined,
     onEnd: undefined as (() => void) | undefined,
     onError: undefined as (() => void) | undefined,
+    playerVars: undefined as Record<string, unknown> | undefined,
   },
 }))
 
@@ -24,6 +25,7 @@ vi.mock('react-youtube', () => ({
     ytProps.onReady = props.onReady
     ytProps.onEnd = props.onEnd
     ytProps.onError = props.onError
+    ytProps.playerVars = props.opts?.playerVars
     props.onReady?.({ target: { playVideo: mockPlayVideo, pauseVideo: mockPauseVideo } })
     return (
       <div
@@ -70,6 +72,11 @@ describe('YouTubePlayer', () => {
     const { rerender } = render(<YouTubePlayer {...baseProps} isPlaying={true} />)
     rerender(<YouTubePlayer {...baseProps} videoId="nextVideoId" isPlaying={true} />)
     expect(screen.getByTestId('yt-iframe')).toHaveAttribute('data-autoplay', '1')
+  })
+
+  it('iOS タブレットでも JS 制御を維持するためインライン再生を有効にする', () => {
+    render(<YouTubePlayer {...baseProps} />)
+    expect(ytProps.playerVars).toMatchObject({ playsinline: 1 })
   })
 
   it('isPlaying=false のとき pauseVideo を呼ぶ', () => {

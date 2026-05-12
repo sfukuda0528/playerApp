@@ -30,6 +30,7 @@ export function useMusicLinks(
   useEffect(() => { onUpdateRef.current = options?.onUpdate })
 
   const linksRef = useRef<MusicLink[]>([])
+  const deletedIdsRef = useRef(new Set<string>())
   useEffect(() => { linksRef.current = links }, [links])
 
   useEffect(() => {
@@ -44,7 +45,12 @@ export function useMusicLinks(
         .then(({ data, error: fetchError }) => {
           if (cancelled) return
           if (fetchError) { setError(fetchError.message); setLoading(false); return }
-          setLinks((prev) => mergeLinks(data ? data as MusicLink[] : [], prev))
+          setLinks((prev) => {
+            const deletedIds = deletedIdsRef.current
+            const fetched = (data ? data as MusicLink[] : []).filter((link) => !deletedIds.has(link.id))
+            const current = prev.filter((link) => !deletedIds.has(link.id))
+            return mergeLinks(fetched, current)
+          })
           setLoading(false)
         })
     }
@@ -57,6 +63,7 @@ export function useMusicLinks(
         (payload) => {
           const newLink = payload.new as MusicLink
           const prevLinks = linksRef.current
+          deletedIdsRef.current.delete(newLink.id)
           setLinks((prev) => {
             if (prev.some((link) => link.id === newLink.id)) return prev
             return mergeLinks(prev, [newLink])
@@ -80,7 +87,11 @@ export function useMusicLinks(
       .on(
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'music_links', filter: `session_id=eq.${sessionId}` },
-        (payload) => setLinks((prev) => prev.filter((l) => l.id !== (payload.old as MusicLink).id))
+        (payload) => {
+          const deletedId = (payload.old as MusicLink).id
+          deletedIdsRef.current.add(deletedId)
+          setLinks((prev) => prev.filter((l) => l.id !== deletedId))
+        }
       )
       .subscribe((status) => {
         if (cancelled) return
@@ -99,6 +110,10 @@ export function useMusicLinks(
   }, [sessionId])
 
   const optimisticReorder = (sorted: MusicLink[]) => setLinks(sorted)
+  const optimisticDelete = (linkId: string) => {
+    deletedIdsRef.current.add(linkId)
+    setLinks((prev) => prev.filter((link) => link.id !== linkId))
+  }
 
-  return { links, loading, error, optimisticReorder }
+  return { links, loading, error, optimisticReorder, optimisticDelete }
 }

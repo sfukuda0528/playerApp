@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useMusicLinks } from './useMusicLinks'
 import type { MusicLink } from '../types/session'
@@ -92,6 +92,36 @@ describe('useMusicLinks', () => {
     resolveFetch({ data: [link1], error: null })
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.links.map((link) => link.id)).toEqual(['ml-1', 'ml-2'])
+  })
+
+  it('初期取得中に削除されたリンクを遅い fetch 結果で復活させない', async () => {
+    let resolveFetch: (value: { data: MusicLink[]; error: null }) => void = () => {}
+    mockInitialFetch.mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const { result } = renderHook(() => useMusicLinks('sess-1'))
+    await waitFor(() => expect(mockInitialFetch).toHaveBeenCalledOnce())
+
+    act(() => { handlers[0]({ new: link1 }) })
+    await waitFor(() => expect(result.current.links.map((link) => link.id)).toEqual(['ml-1']))
+
+    act(() => { handlers[2]({ old: { id: 'ml-1' } }) })
+    await waitFor(() => expect(result.current.links).toHaveLength(0))
+
+    await act(async () => { resolveFetch({ data: [link1], error: null }) })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.links).toHaveLength(0)
+  })
+
+  it('optimisticDelete: 指定リンクを即座に除去する', async () => {
+    mockInitialFetch.mockResolvedValue({ data: [link1, link2], error: null })
+    const { result } = renderHook(() => useMusicLinks('sess-1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => { result.current.optimisticDelete('ml-1') })
+
+    expect(result.current.links.map((link) => link.id)).toEqual(['ml-2'])
   })
 
   it('Realtime INSERT: sort_order が小さいリンクは先頭に挿入される', async () => {

@@ -7,7 +7,7 @@ import type { MusicLink } from '../types/session'
 const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
-  mockReorder, mockOptimisticReorder, capturedOptions, capturedOnDragEnd, mockError,
+  mockReorder, mockOptimisticReorder, mockOptimisticDelete, capturedOptions, capturedOnDragEnd, mockError,
   mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
   mockAmbientPlayer,
 } = vi.hoisted(() => ({
@@ -21,6 +21,7 @@ const {
   mockFetchedTitle: { value: null as string | null },
   mockReorder: vi.fn(),
   mockOptimisticReorder: vi.fn(),
+  mockOptimisticDelete: vi.fn(),
   capturedOptions: { onInsert: undefined as ((link: MusicLink, prevLinks: MusicLink[]) => void) | undefined },
   capturedOnDragEnd: { fn: undefined as ((e: unknown) => void) | undefined },
   mockError: { value: null as string | null },
@@ -33,7 +34,13 @@ const {
 vi.mock('../hooks/useMusicLinks', () => ({
   useMusicLinks: (_sessionId: string, options?: { onInsert?: (link: MusicLink, prevLinks: MusicLink[]) => void }) => {
     capturedOptions.onInsert = options?.onInsert
-    return { links: mockLinks.value, loading: false, error: null, optimisticReorder: mockOptimisticReorder }
+    return {
+      links: mockLinks.value,
+      loading: false,
+      error: null,
+      optimisticReorder: mockOptimisticReorder,
+      optimisticDelete: mockOptimisticDelete,
+    }
   },
 }))
 
@@ -574,6 +581,16 @@ describe('MusicPanel', () => {
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('handleEnded は削除成功後にキューから即時除去する', async () => {
+      mockLinks.value = [link1, link2]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
+
+      await act(async () => { await onEnded() })
+
+      expect(mockOptimisticDelete).toHaveBeenCalledWith('ml-1')
     })
 
     it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
