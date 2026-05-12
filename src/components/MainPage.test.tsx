@@ -369,6 +369,16 @@ describe('MainPage - 参加者', () => {
     expect(await screen.findByText('Alice')).toBeInTheDocument()
   })
 
+  it('メンバータブでリッチなメンバー概要を表示する', async () => {
+    renderAsParticipant()
+    await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    expect(await screen.findByText('参加中')).toBeInTheDocument()
+    expect(screen.getByText('空き枠 2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Aliceのアバター')).toHaveTextContent('A')
+    expect(screen.getByLabelText('Bobのアバター')).toHaveTextContent('B')
+  })
+
   it('メンバータブで非ホストにcrownアイコンが付かない', async () => {
     renderAsParticipant()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))

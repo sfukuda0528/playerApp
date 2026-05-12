@@ -57,6 +57,14 @@ describe('InviteScreen', () => {
     expect(await screen.findByText(/2 \/ 4 人/)).toBeInTheDocument()
   })
 
+  it('リッチなメンバー概要を表示する', async () => {
+    renderWithRoute()
+    expect(await screen.findByText('参加中')).toBeInTheDocument()
+    expect(screen.getByText('空き枠 2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Aliceのアバター')).toHaveTextContent('A')
+    expect(screen.getByLabelText('Bobのアバター')).toHaveTextContent('B')
+  })
+
   it('スタートボタンクリックで/session/:idへ遷移', async () => {
     renderWithRoute()
     await userEvent.click(await screen.findByRole('button', { name: 'スタート' }))
