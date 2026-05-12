@@ -166,6 +166,11 @@ describe('MainPage - ホスト', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'セッション終了' })).toBeInTheDocument())
   })
 
+  it('ヘッダーのロゴ右にホスト名が表示される', async () => {
+    renderAsHost()
+    expect(await screen.findByText('Aliceとして参加中')).toBeInTheDocument()
+  })
+
   it('メンバータブに切り替えるとQRコードが表示される', async () => {
     renderAsHost()
     await waitFor(() => screen.getByRole('tab', { name: /メンバー/ }))
@@ -293,6 +298,11 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByRole('button', { name: '退出' })).toBeInTheDocument())
     expect(screen.queryByText('2/4')).not.toBeInTheDocument()
+  })
+
+  it('ヘッダーのロゴ右に参加者名が表示される', async () => {
+    renderAsParticipant()
+    expect(await screen.findByText('Bobとして参加中')).toBeInTheDocument()
   })
 
   it('退出ボタンでleave_sessionを呼び/へ遷移する', async () => {

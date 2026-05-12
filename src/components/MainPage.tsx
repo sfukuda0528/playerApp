@@ -50,6 +50,9 @@ export default function MainPage() {
     (authId: string) => participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー',
     [participants]
   )
+  const currentParticipantName = currentUserId
+    ? participants.find((p) => p.auth_id === currentUserId)?.name ?? (isHost ? session?.host_name : null)
+    : null
 
   const { photos } = usePhotos(sessionId!, {
     onInsert: (photo: Photo) =>
@@ -192,19 +195,26 @@ export default function MainPage() {
   return (
     <div className="flex flex-col h-dvh" style={{ background: 'linear-gradient(170deg, #fdf6ec, #fff8f0)' }}>
       <header
-        className="px-4 py-3 flex items-center justify-between flex-shrink-0"
+        className="px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0"
         style={{ background: 'linear-gradient(135deg, #5a2800, #7c4a1e, #b06228)' }}
       >
-        <span className="text-camp-cream font-bold text-sm flex items-center gap-1.5">
-          <FontAwesomeIcon icon={faCampground} />
-          CampCanvas
-        </span>
+        <div className="min-w-0 flex items-center gap-2">
+          <span className="text-camp-cream font-bold text-sm flex flex-shrink-0 items-center gap-1.5">
+            <FontAwesomeIcon icon={faCampground} />
+            CampCanvas
+          </span>
+          {currentParticipantName && (
+            <span className="min-w-0 max-w-[52vw] truncate text-xs font-medium text-camp-cream/80">
+              {currentParticipantName}として参加中
+            </span>
+          )}
+        </div>
         {currentUserId && (
           <button
             type="button"
             onClick={isHost ? handleEnd : handleLeave}
             disabled={isHost ? loading : leaving}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-camp-cream active:scale-95 disabled:opacity-50 transition-all duration-150"
+            className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-camp-cream active:scale-95 disabled:opacity-50 transition-all duration-150"
             style={{ background: 'rgba(253,246,236,0.16)' }}
           >
             <FontAwesomeIcon icon={faRightFromBracket} className="text-xs" />
