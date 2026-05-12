@@ -6,7 +6,7 @@ interface Props {
 
 export default function AmbientPlayer({ videoId }: Props) {
   return (
-    <div className="flex justify-center">
+    <div data-testid="ambient-player" className="sr-only">
       <YouTube
         videoId={videoId}
         opts={{
