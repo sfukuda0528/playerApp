@@ -80,16 +80,16 @@ export default function MainPage() {
   }, [session])
 
   useEffect(() => {
-    if (participantsLoading || participantsError || !currentUserId || isHost) return
+    if (participantsLoading || participantsError || !currentUserId || isHost || leaving) return
     const isStillParticipant = participants.some((p) => p.auth_id === currentUserId)
     if (!isStillParticipant) {
       clearLastSession()
       navigate('/')
     }
-  }, [participantsLoading, participantsError, currentUserId, isHost, participants, navigate])
+  }, [participantsLoading, participantsError, currentUserId, isHost, leaving, participants, navigate])
 
   useEffect(() => {
-    if (!sessionId || !currentUserId || isHost) return
+    if (!sessionId || !currentUserId || isHost || leaving) return
 
     let cancelled = false
     const checkMembership = async () => {
@@ -123,7 +123,7 @@ export default function MainPage() {
       window.removeEventListener('pageshow', checkMembership)
       document.removeEventListener('visibilitychange', checkMembership)
     }
-  }, [sessionId, currentUserId, isHost, navigate])
+  }, [sessionId, currentUserId, isHost, leaving, navigate])
 
   useEffect(() => {
     if (!session?.code) return
@@ -163,13 +163,12 @@ export default function MainPage() {
 
     setLeaving(true)
     const { error } = await supabase.rpc('leave_session', { p_session_id: sessionId! })
-    setLeaving(false)
     if (error) {
+      setLeaving(false)
       console.error('Failed to leave session:', error)
       return
     }
 
-    clearLastSession()
     navigate('/')
   }
 

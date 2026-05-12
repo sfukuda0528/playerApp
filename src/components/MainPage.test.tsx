@@ -316,6 +316,46 @@ describe('MainPage - 参加者', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
+  it('退出ボタンでトップへ戻るときは前回セッションを残す', async () => {
+    mockRpc.mockResolvedValue({ error: null })
+    saveLastSession(fakeSession)
+    renderAsParticipant()
+
+    await userEvent.click(await screen.findByRole('button', { name: '退出' }))
+
+    expect(loadLastSession()).toEqual(fakeSession)
+    expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
+  it('退出処理中に自分が参加者一覧から消えても前回セッションを残す', async () => {
+    let resolveLeave: (value: { error: null }) => void = () => {}
+    mockRpc.mockReturnValue(new Promise((resolve) => {
+      resolveLeave = resolve
+    }))
+    saveLastSession(fakeSession)
+    const { rerender } = renderAsParticipant()
+
+    await userEvent.click(await screen.findByRole('button', { name: '退出' }))
+
+    mockParticipants.splice(0, mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-host', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    )
+    rerender(
+      <MemoryRouter initialEntries={[{ pathname: '/session/sess-1', state: { session: fakeSession } }]}>
+        <Routes><Route path="/session/:sessionId" element={<MainPage />} /></Routes>
+      </MemoryRouter>
+    )
+
+    expect(loadLastSession()).toEqual(fakeSession)
+
+    await act(async () => {
+      resolveLeave({ error: null })
+    })
+
+    expect(loadLastSession()).toEqual(fakeSession)
+    expect(mockNavigate).toHaveBeenCalledWith('/')
+  })
+
   it('写真タブ表示中も MusicPanel が DOM に残る', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
