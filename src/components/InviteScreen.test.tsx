@@ -1,13 +1,23 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import InviteScreen from './InviteScreen'
 
-const { mockNavigate, mockGetUser, mockUpdateSession } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockGetUser,
+  mockUpdateSession,
+  mockFetchSession,
+  mockRemoveChannel,
+  realtimeCallbacks,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockGetUser: vi.fn(),
   mockUpdateSession: vi.fn(),
+  mockFetchSession: vi.fn(),
+  mockRemoveChannel: vi.fn(),
+  realtimeCallbacks: { sessionUpdate: null as ((payload: { new: typeof fakeSession & { started_at?: string | null } }) => void) | null },
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -32,7 +42,21 @@ vi.mock('../lib/supabase', () => ({
       update: (values: unknown) => ({
         eq: (column: string, value: string) => mockUpdateSession(values, column, value),
       }),
+      select: () => ({
+        eq: () => ({
+          single: () => mockFetchSession(),
+        }),
+      }),
     }),
+    channel: () => ({
+      on: (_event: string, _filter: unknown, cb: (payload: { new: typeof fakeSession & { started_at?: string | null } }) => void) => {
+        realtimeCallbacks.sessionUpdate = cb
+        return {
+          subscribe: () => ({}),
+        }
+      },
+    }),
+    removeChannel: mockRemoveChannel,
   },
 }))
 
@@ -56,6 +80,8 @@ describe('InviteScreen', () => {
     vi.clearAllMocks()
     mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-alice' } }, error: null })
     mockUpdateSession.mockResolvedValue({ data: null, error: null })
+    mockFetchSession.mockResolvedValue({ data: fakeSession, error: null })
+    realtimeCallbacks.sessionUpdate = null
   })
 
   it('6桁コードを表示する', async () => {
@@ -106,6 +132,39 @@ describe('InviteScreen', () => {
 
     expect(await screen.findByText('ホストの開始を待っています')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'スタート' })).not.toBeInTheDocument()
+  })
+
+  it('非ホストはホストの開始更新を受けると/session/:idへ遷移する', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } }, error: null })
+    renderWithRoute()
+
+    await waitFor(() => expect(realtimeCallbacks.sessionUpdate).not.toBeNull())
+
+    act(() => {
+      realtimeCallbacks.sessionUpdate?.({
+        new: { ...fakeSession, started_at: '2026-05-13T00:00:00Z' },
+      })
+    })
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1', {
+        state: { session: expect.objectContaining({ started_at: '2026-05-13T00:00:00Z' }) },
+      })
+    )
+  })
+
+  it('非ホストは再取得したセッションが開始済みなら/session/:idへ遷移する', async () => {
+    const startedSession = { ...fakeSession, started_at: '2026-05-13T00:00:00Z' }
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-bob' } }, error: null })
+    mockFetchSession.mockResolvedValue({ data: startedSession, error: null })
+
+    renderWithRoute()
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1', {
+        state: { session: startedSession },
+      })
+    )
   })
 
   it('自分のアバターと名前を強調表示する', async () => {

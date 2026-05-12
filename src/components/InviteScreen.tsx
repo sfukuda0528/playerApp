@@ -10,7 +10,8 @@ import type { Session } from '../types/session'
 export default function InviteScreen() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const location = useLocation()
-  const session = location.state?.session as Session | undefined
+  const routeSession = location.state?.session as Session | undefined
+  const [session, setSession] = useState<Session | undefined>(routeSession)
   const navigate = useNavigate()
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
@@ -19,6 +20,10 @@ export default function InviteScreen() {
   const { participants } = useParticipants(sessionId ?? '')
 
   const MAX_PARTICIPANTS = 4
+
+  useEffect(() => {
+    setSession(routeSession)
+  }, [routeSession])
 
   const joinUrl = `${window.location.origin}/join/${session?.code}`
   const sortedParticipants = [...participants].sort((a, b) =>
@@ -47,6 +52,42 @@ export default function InviteScreen() {
   }, [session?.host_auth_id])
 
   useEffect(() => {
+    if (!sessionId) return
+
+    let cancelled = false
+    supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return
+        setSession(data as Session)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    if (!sessionId) return
+
+    const channel = supabase
+      .channel(`session-start:${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
+        (payload) => {
+          setSession(payload.new as Session)
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [sessionId])
+
+  useEffect(() => {
     if (!sessionId || !session?.started_at || isHost !== false) return
     navigate(`/session/${sessionId}`, { state: { session } })
   }, [isHost, navigate, session, sessionId])
@@ -54,6 +95,8 @@ export default function InviteScreen() {
   if (!sessionId) return null
 
   const handleStart = async () => {
+    if (!session) return
+
     const startedAt = new Date().toISOString()
     const startedSession = { ...session, started_at: startedAt } as Session
     const { error } = await supabase
@@ -66,6 +109,7 @@ export default function InviteScreen() {
       return
     }
 
+    setSession(startedSession)
     navigate(`/session/${sessionId}`, { state: { session: startedSession } })
   }
 
