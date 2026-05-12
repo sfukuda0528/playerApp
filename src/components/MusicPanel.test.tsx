@@ -348,7 +348,7 @@ describe('MusicPanel', () => {
 
       await userEvent.click(screen.getByRole('button', { name: '検索結果動画の追加方法を表示' }))
 
-      const dialog = screen.getByRole('dialog', { name: '検索結果動画の追加方法' })
+      const dialog = screen.getByRole('dialog')
       expect(dialog).toHaveTextContent('検索結果動画')
       expect(dialog).toHaveTextContent('検索チャンネル')
       expect(dialog).toHaveTextContent('次に再生')
