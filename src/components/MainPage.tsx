@@ -24,6 +24,8 @@ export default function MainPage() {
   const navigate = useNavigate()
   const { endSession, loading } = useSessionEnd()
   const [isHost, setIsHost] = useState(false)
+  const [isAdminMode, setIsAdminMode] = useState(false)
+  const adminTapCountRef = useRef(0)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [leaving, setLeaving] = useState(false)
   const [kickingParticipantId, setKickingParticipantId] = useState<string | null>(null)
@@ -53,12 +55,17 @@ export default function MainPage() {
   const currentParticipantName = currentUserId
     ? participants.find((p) => p.auth_id === currentUserId)?.name ?? (isHost ? session?.host_name : null)
     : null
+  const currentParticipant = currentUserId
+    ? participants.find((p) => p.auth_id === currentUserId)
+    : undefined
   const sortedParticipants = [...participants].sort((a, b) =>
     a.auth_id === session?.host_auth_id ? -1 :
     b.auth_id === session?.host_auth_id ? 1 : 0
   )
   const emptySlotCount = Math.max(MAX_PARTICIPANTS - participants.length, 0)
   const emptySlots = Array.from({ length: emptySlotCount })
+  const canManage = isHost || isAdminMode
+  const canPlayHostMedia = isHost && !isAdminMode
 
   const { photos } = usePhotos(sessionId!, {
     onInsert: (photo: Photo) =>
@@ -78,6 +85,10 @@ export default function MainPage() {
   }, [toast])
 
   useEffect(() => {
+    if (currentParticipant?.is_admin) setIsAdminMode(true)
+  }, [currentParticipant?.is_admin])
+
+  useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {
       if (error || !user) return
       setCurrentUserId(user.id)
@@ -90,16 +101,16 @@ export default function MainPage() {
   }, [session])
 
   useEffect(() => {
-    if (participantsLoading || participantsError || !currentUserId || isHost || leaving) return
+    if (participantsLoading || participantsError || !currentUserId || canManage || leaving) return
     const isStillParticipant = participants.some((p) => p.auth_id === currentUserId)
     if (!isStillParticipant) {
       clearLastSession()
       navigate('/')
     }
-  }, [participantsLoading, participantsError, currentUserId, isHost, leaving, participants, navigate])
+  }, [participantsLoading, participantsError, currentUserId, canManage, leaving, participants, navigate])
 
   useEffect(() => {
-    if (!sessionId || !currentUserId || isHost || leaving) return
+    if (!sessionId || !currentUserId || canManage || leaving) return
 
     let cancelled = false
     const checkMembership = async () => {
@@ -133,7 +144,7 @@ export default function MainPage() {
       window.removeEventListener('pageshow', checkMembership)
       document.removeEventListener('visibilitychange', checkMembership)
     }
-  }, [sessionId, currentUserId, isHost, leaving, navigate])
+  }, [sessionId, currentUserId, canManage, leaving, navigate])
 
   useEffect(() => {
     if (!session?.code) return
@@ -195,6 +206,22 @@ export default function MainPage() {
     removeParticipant(participantId)
   }
 
+  const handleAdminToggleTap = async () => {
+    adminTapCountRef.current += 1
+    if (adminTapCountRef.current < 5) return
+    adminTapCountRef.current = 0
+    const nextAdminMode = !isAdminMode
+    const { error } = await supabase.rpc('set_admin_mode', {
+      p_session_id: sessionId!,
+      p_is_admin: nextAdminMode,
+    })
+    if (error) {
+      console.error('Failed to set admin mode:', error)
+      return
+    }
+    setIsAdminMode(nextAdminMode)
+  }
+
   const tabTriggerClass =
     'flex-1 flex flex-col gap-1 py-2 text-xs rounded-xl ' +
     'text-camp-cream/40 data-[state=active]:text-camp-cream ' +
@@ -208,10 +235,15 @@ export default function MainPage() {
         style={{ background: 'linear-gradient(135deg, #5a2800, #7c4a1e, #b06228)' }}
       >
         <div className="min-w-0 flex items-center gap-2">
-          <span className="text-camp-cream font-bold text-sm flex flex-shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            aria-label="管理者モード切替"
+            onClick={handleAdminToggleTap}
+            className="text-camp-cream font-bold text-sm flex flex-shrink-0 items-center gap-1.5"
+          >
             <FontAwesomeIcon icon={faCampground} />
             CampCanvas
-          </span>
+          </button>
           {currentParticipantName && (
             <span className="min-w-0 max-w-[52vw] truncate text-xs font-medium text-camp-cream/80">
               {currentParticipantName}として参加中
@@ -221,13 +253,13 @@ export default function MainPage() {
         {currentUserId && (
           <button
             type="button"
-            onClick={isHost ? handleEnd : handleLeave}
-            disabled={isHost ? loading : leaving}
+            onClick={canManage ? handleEnd : handleLeave}
+            disabled={canManage ? loading : leaving}
             className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-camp-cream active:scale-95 disabled:opacity-50 transition-all duration-150"
             style={{ background: 'rgba(253,246,236,0.16)' }}
           >
             <FontAwesomeIcon icon={faRightFromBracket} className="text-xs" />
-            {isHost ? 'セッション終了' : '退出'}
+            {canManage ? 'セッション終了' : '退出'}
           </button>
         )}
       </header>
@@ -245,7 +277,7 @@ export default function MainPage() {
 
       <Tabs defaultValue="photo" className="flex flex-col flex-1 overflow-hidden">
         <TabsContent value="photo" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
-          {isHost && <Slideshow photos={photos} />}
+          {canPlayHostMedia && <Slideshow photos={photos} />}
           {currentUserId && (
             <PhotoUpload
               sessionId={sessionId!}
@@ -260,7 +292,8 @@ export default function MainPage() {
             <MusicPanel
               sessionId={sessionId!}
               currentUserId={currentUserId}
-              isHost={isHost}
+              isHost={canPlayHostMedia}
+              canManage={canManage}
               onMusicAdd={handleMusicAdd}
             />
           )}
@@ -326,7 +359,7 @@ export default function MainPage() {
             {sortedParticipants
               .map((p) => {
                 const isParticipantHost = p.auth_id === session?.host_auth_id
-                const canKick = isHost && !isParticipantHost
+                const canKick = canManage && !isParticipantHost && p.auth_id !== currentUserId
 
                 return (
                   <li
@@ -360,7 +393,7 @@ export default function MainPage() {
                 )
               })}
           </ul>
-          {isHost && (
+          {canManage && (
             <>
               <div
                 className="bg-white border border-camp-wheat rounded-xl p-4 flex flex-col items-center gap-3"

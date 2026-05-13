@@ -100,6 +100,7 @@ npx supabase db push
 | 18 | `supabase/migrations/20260513000003_start_session_rpc.sql` | start_session RPC 追加 |
 | 19 | `supabase/migrations/20260513000004_music_links_host_delete_policy.sql` | ホストの music_links 削除ポリシー追加 |
 | 20 | `supabase/migrations/20260513000005_raise_session_capacity_to_five.sql` | セッション上限人数を5人に変更 |
+| 21 | `supabase/migrations/20260513000006_admin_mode_kick_policy.sql` | 管理者モード保存・管理者キック権限追加 |
 
 > **全ファイルの適用が必要**。現在のフロントエンドは `create_session` / `join_session` RPC に依存するため、2026-05-11 以降のマイグレーションも本番に適用する。
 

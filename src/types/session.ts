@@ -17,6 +17,7 @@ export interface Participant {
   session_id: string
   name: string
   auth_id: string
+  is_admin?: boolean
   joined_at: string
 }
 

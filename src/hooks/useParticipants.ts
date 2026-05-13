@@ -78,6 +78,23 @@ export function useParticipants(
       .on(
         'postgres_changes',
         {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'participants',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const updatedParticipant = payload.new as Participant
+          setParticipants((prev) =>
+            prev.map((participant) =>
+              participant.id === updatedParticipant.id ? updatedParticipant : participant
+            )
+          )
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
           event: 'DELETE',
           schema: 'public',
           table: 'participants',

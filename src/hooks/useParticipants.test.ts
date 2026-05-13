@@ -38,6 +38,7 @@ const bob: Participant = {
 
 describe('useParticipants', () => {
   let insertHandler: (payload: { new: Participant }) => void
+  let updateHandler: (payload: { new: Participant }) => void
   let deleteHandler: (payload: { old: Pick<Participant, 'id'> }) => void
 
   beforeEach(() => {
@@ -47,6 +48,9 @@ describe('useParticipants', () => {
     mockOn.mockImplementation((_event: string, filter: { event: string }, handler: unknown) => {
       if (filter.event === 'INSERT') {
         insertHandler = handler as (payload: { new: Participant }) => void
+      }
+      if (filter.event === 'UPDATE') {
+        updateHandler = handler as (payload: { new: Participant }) => void
       }
       if (filter.event === 'DELETE') {
         deleteHandler = handler as (payload: { old: Pick<Participant, 'id'> }) => void
@@ -84,6 +88,15 @@ describe('useParticipants', () => {
     act(() => { insertHandler({ new: bob }) })
 
     expect(onInsert).toHaveBeenCalledWith(bob)
+  })
+
+  it('Realtime UPDATE: 既存参加者の is_admin を更新する', async () => {
+    const { result } = renderHook(() => useParticipants('sess-1'))
+    await waitFor(() => expect(result.current.participants).toHaveLength(1))
+
+    act(() => { updateHandler({ new: { ...alice, is_admin: true } }) })
+
+    await waitFor(() => expect(result.current.participants[0].is_admin).toBe(true))
   })
 
   it('初期取得は Realtime 購読確立後に開始する', () => {

@@ -39,6 +39,7 @@ const {
   capturedMusicPanelProps: {
     onMusicAdd: undefined as ((link: MusicLink) => void) | undefined,
     isHost: undefined as boolean | undefined,
+    canManage: undefined as boolean | undefined,
   },
 }))
 
@@ -76,9 +77,18 @@ vi.mock('./PhotoUpload', () => ({
   default: () => <div data-testid="photo-upload" />,
 }))
 vi.mock('./MusicPanel', () => ({
-  default: ({ onMusicAdd, isHost }: { onMusicAdd?: (link: MusicLink) => void; isHost?: boolean }) => {
+  default: ({
+    onMusicAdd,
+    isHost,
+    canManage,
+  }: {
+    onMusicAdd?: (link: MusicLink) => void
+    isHost?: boolean
+    canManage?: boolean
+  }) => {
     capturedMusicPanelProps.onMusicAdd = onMusicAdd
     capturedMusicPanelProps.isHost = isHost
+    capturedMusicPanelProps.canManage = canManage
     return <div data-testid="music-panel" />
   },
 }))
@@ -147,6 +157,7 @@ describe('MainPage - ホスト', () => {
     capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    capturedMusicPanelProps.canManage = undefined
     localStorage.clear()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
@@ -232,6 +243,11 @@ describe('MainPage - ホスト', () => {
     await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(true))
   })
 
+  it('MusicPanel に canManage=true が渡る', async () => {
+    renderAsHost()
+    await waitFor(() => expect(capturedMusicPanelProps.canManage).toBe(true))
+  })
+
   it('メンバータブで非ホストメンバーをキックできる', async () => {
     mockRpc.mockResolvedValue({ error: null })
     renderAsHost()
@@ -266,6 +282,7 @@ describe('MainPage - 参加者', () => {
     capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    capturedMusicPanelProps.canManage = undefined
     mockMembershipCheck.mockResolvedValue({ data: [{ id: 'p-2' }], error: null })
     localStorage.clear()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -411,6 +428,41 @@ describe('MainPage - 参加者', () => {
     await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(false))
   })
 
+  it('ロゴを5回押すと管理者モードになり、再生権限なしで管理権限だけ渡る', async () => {
+    mockRpc.mockResolvedValue({ error: null })
+    renderAsParticipant()
+
+    const logoButton = await screen.findByRole('button', { name: '管理者モード切替' })
+    for (let i = 0; i < 5; i += 1) {
+      await userEvent.click(logoButton)
+    }
+
+    await waitFor(() => expect(capturedMusicPanelProps.isHost).toBe(false))
+    expect(mockRpc).toHaveBeenCalledWith('set_admin_mode', {
+      p_session_id: 'sess-1',
+      p_is_admin: true,
+    })
+    expect(capturedMusicPanelProps.canManage).toBe(true)
+    expect(screen.queryByTestId('slideshow')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'セッション終了' })).toBeInTheDocument()
+  })
+
+  it('管理者モード有効化後はメンバーをキックできる', async () => {
+    mockRpc.mockResolvedValue({ error: null })
+    mockParticipants.push({ id: 'p-3', auth_id: 'uid-carol', name: 'Carol', session_id: 'sess-1', joined_at: '' })
+    renderAsParticipant()
+
+    const logoButton = await screen.findByRole('button', { name: '管理者モード切替' })
+    for (let i = 0; i < 5; i += 1) {
+      await userEvent.click(logoButton)
+    }
+
+    await userEvent.click(screen.getByRole('tab', { name: /メンバー/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Carolをキック' }))
+
+    expect(mockRpc).toHaveBeenCalledWith('kick_participant', { p_participant_id: 'p-3' })
+  })
+
   it('メンバータブでキックボタンを表示しない', async () => {
     renderAsParticipant()
 
@@ -459,6 +511,7 @@ describe('MainPage - トースト', () => {
     capturedParticipantsInsert.onInsert = undefined
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
+    capturedMusicPanelProps.canManage = undefined
   })
   it('写真追加時: 追加者名のトーストが表示される', async () => {
     renderAsParticipant()

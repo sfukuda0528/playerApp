@@ -287,6 +287,23 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
     })
 
+    it('管理者には他人のリンクにも削除ボタンが表示されるが YouTubePlayer は表示されない', () => {
+      mockLinks.value = [link2]
+      mockPlaybackState.value = playbackState('ml-2', true)
+      render(
+        <MusicPanel
+          sessionId="sess-1"
+          currentUserId="uid-me"
+          isHost={false}
+          canManage={true}
+        />
+      )
+
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
+      expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
+    })
+
     it('削除ボタンクリックで deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)

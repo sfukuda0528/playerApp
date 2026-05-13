@@ -28,17 +28,18 @@ interface Props {
   sessionId: string
   currentUserId: string
   isHost?: boolean
+  canManage?: boolean
   onMusicAdd?: (link: MusicLink) => void
 }
 
 function SortableQueueItem({
-  link, index, currentIndex, currentUserId, isHost, loading, onDelete,
+  link, index, currentIndex, currentUserId, canManage, loading, onDelete,
 }: {
   link: MusicLink
   index: number
   currentIndex: number
   currentUserId: string
-  isHost: boolean
+  canManage: boolean
   loading: boolean
   onDelete: () => void
 }) {
@@ -47,7 +48,7 @@ function SortableQueueItem({
     id: link.id,
     disabled: isCurrent,
   })
-  const canDelete = isHost || link.added_by_auth_id === currentUserId
+  const canDelete = canManage || link.added_by_auth_id === currentUserId
   return (
     <li
       ref={setNodeRef}
@@ -109,7 +110,13 @@ function SortableQueueItem({
   )
 }
 
-export default function MusicPanel({ sessionId, currentUserId, isHost = false, onMusicAdd }: Props) {
+export default function MusicPanel({
+  sessionId,
+  currentUserId,
+  isHost = false,
+  canManage = isHost,
+  onMusicAdd,
+}: Props) {
   const { links, optimisticReorder, optimisticDelete } = useMusicLinks(sessionId, {
     onInsert: (link) => {
       onMusicAdd?.(link)
@@ -360,7 +367,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                       index={index}
                       currentIndex={currentIndex}
                       currentUserId={currentUserId}
-                      isHost={isHost}
+                      canManage={canManage}
                       loading={loading}
                       onDelete={() => handleDelete(link, index)}
                     />
