@@ -304,11 +304,28 @@ describe('MusicPanel', () => {
       expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
     })
 
-    it('削除ボタンクリックで deleteLink を呼ぶ', async () => {
+    it('削除ボタンクリックで曲情報を含む確認ダイアログを表示し、確定で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       await userEvent.click(screen.getByRole('button', { name: '削除' }))
+      expect(mockDeleteLink).not.toHaveBeenCalled()
+
+      const dialog = screen.getByRole('dialog', { name: '曲を削除しますか？' })
+      expect(dialog).toHaveTextContent('Never Gonna Give You Up')
+      expect(dialog).toHaveTextContent('https://youtu.be/dQw4w9WgXcQ')
+
+      await userEvent.click(screen.getByRole('button', { name: '削除する' }))
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+    })
+
+    it('曲削除確認ダイアログはキャンセルできる', async () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+      await userEvent.click(screen.getByRole('button', { name: '削除' }))
+      await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+      expect(screen.queryByRole('dialog', { name: '曲を削除しますか？' })).not.toBeInTheDocument()
+      expect(mockDeleteLink).not.toHaveBeenCalled()
     })
 
     it('isHost=true かつ links が空のとき AmbientPlayer が表示される', () => {

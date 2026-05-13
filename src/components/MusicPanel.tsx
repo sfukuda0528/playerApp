@@ -134,6 +134,7 @@ export default function MusicPanel({
   const [selectedSearchItem, setSelectedSearchItem] = useState<VideoItem | null>(null)
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
+  const [linkToDelete, setLinkToDelete] = useState<{ link: MusicLink; index: number } | null>(null)
 
   const skipToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sensors = useSensors(useSensor(PointerSensor))
@@ -236,6 +237,7 @@ export default function MusicPanel({
     const ok = await deleteLink(link.id)
     if (!ok) return
     optimisticDelete(link.id)
+    setLinkToDelete(null)
   }
 
   const handleEnded = async () => {
@@ -369,7 +371,7 @@ export default function MusicPanel({
                       currentUserId={currentUserId}
                       canManage={canManage}
                       loading={loading}
-                      onDelete={() => handleDelete(link, index)}
+                      onDelete={() => setLinkToDelete({ link, index })}
                     />
                   ))}
                 </ul>
@@ -613,6 +615,46 @@ export default function MusicPanel({
               >
                 <ListEnd size={15} />
                 キューに追加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {linkToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-5">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="music-delete-dialog-title"
+            className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl"
+          >
+            <h2 id="music-delete-dialog-title" className="text-base font-black text-camp-dark">
+              曲を削除しますか？
+            </h2>
+            <div className="mt-3 min-w-0">
+              <p className="text-sm font-bold text-camp-dark break-words">
+                {linkToDelete.link.title || linkToDelete.link.url}
+              </p>
+              <p className="mt-1 text-xs text-camp-brown/60 break-all">
+                {linkToDelete.link.url}
+              </p>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLinkToDelete(null)}
+                disabled={loading}
+                className="flex-1 rounded-xl bg-camp-wheat/45 px-3 py-2 text-sm font-bold text-camp-brown disabled:opacity-60"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete(linkToDelete.link, linkToDelete.index)}
+                disabled={loading}
+                className="flex-1 rounded-xl bg-camp-destructive px-3 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                削除する
               </button>
             </div>
           </div>
