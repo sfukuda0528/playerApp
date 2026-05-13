@@ -267,6 +267,7 @@ describe('MainPage - 参加者', () => {
     capturedMusicPanelProps.onMusicAdd = undefined
     capturedMusicPanelProps.isHost = undefined
     mockMembershipCheck.mockResolvedValue({ data: [{ id: 'p-2' }], error: null })
+    localStorage.clear()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
@@ -298,6 +299,12 @@ describe('MainPage - 参加者', () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByRole('button', { name: '退出' })).toBeInTheDocument())
     expect(screen.queryByText('2/4')).not.toBeInTheDocument()
+  })
+
+  it('表示したセッションを前回セッションとして保存する', async () => {
+    renderAsParticipant()
+
+    await waitFor(() => expect(loadLastSession()).toEqual(fakeSession))
   })
 
   it('ヘッダーのロゴ右に参加者名が表示される', async () => {

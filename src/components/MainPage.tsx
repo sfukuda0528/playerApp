@@ -15,7 +15,7 @@ import { usePhotos } from '../hooks/usePhotos'
 import { useParticipants } from '../hooks/useParticipants'
 import { supabase } from '../lib/supabase'
 import type { Session, Photo, MusicLink } from '../types/session'
-import { clearLastSession } from '../utils/lastSession'
+import { clearLastSession, saveLastSession } from '../utils/lastSession'
 
 export default function MainPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -83,6 +83,10 @@ export default function MainPage() {
       setCurrentUserId(user.id)
       setIsHost(session?.host_auth_id === user.id)
     })
+  }, [session])
+
+  useEffect(() => {
+    if (session?.id && session.status === 'active') saveLastSession(session)
   }, [session])
 
   useEffect(() => {

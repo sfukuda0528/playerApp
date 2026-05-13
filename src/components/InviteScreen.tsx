@@ -6,6 +6,7 @@ import { faCrown, faPlay } from '@fortawesome/free-solid-svg-icons'
 import { useParticipants } from '../hooks/useParticipants'
 import { supabase } from '../lib/supabase'
 import type { Session } from '../types/session'
+import { saveLastSession } from '../utils/lastSession'
 
 export default function InviteScreen() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -24,6 +25,10 @@ export default function InviteScreen() {
   useEffect(() => {
     setSession(routeSession)
   }, [routeSession])
+
+  useEffect(() => {
+    if (session?.id && session.status === 'active') saveLastSession(session)
+  }, [session])
 
   const sortedParticipants = [...participants].sort((a, b) =>
     a.auth_id === session?.host_auth_id ? -1 :

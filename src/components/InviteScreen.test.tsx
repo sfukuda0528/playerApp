@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import InviteScreen from './InviteScreen'
+import { loadLastSession } from '../utils/lastSession'
 
 const {
   mockNavigate,
@@ -81,6 +82,7 @@ function renderWithRoute() {
 describe('InviteScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-alice' } }, error: null })
     mockStartSessionRpc.mockResolvedValue({
       data: { ...fakeSession, started_at: '2026-05-13T00:00:00Z' },
@@ -94,6 +96,12 @@ describe('InviteScreen', () => {
   it('6桁コードを表示する', async () => {
     renderWithRoute()
     expect(await screen.findByText('472819')).toBeInTheDocument()
+  })
+
+  it('表示したセッションを前回セッションとして保存する', async () => {
+    renderWithRoute()
+
+    await waitFor(() => expect(loadLastSession()).toEqual(fakeSession))
   })
 
   it('QR画像を表示する', async () => {

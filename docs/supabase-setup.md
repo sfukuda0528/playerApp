@@ -84,8 +84,24 @@ npx supabase db push
 | 2 | `supabase/migrations/20260426000001_sessions_replica_identity.sql` | sessions の REPLICA IDENTITY FULL |
 | 3 | `supabase/migrations/20260426000002_media_sharing.sql` | photos / music_links テーブル・RLS・sessions.host_auth_id 追加 |
 | 4 | `supabase/migrations/20260426000003_storage_setup.sql` | Storage バケット `photos` 作成・RLS |
+| 5 | `supabase/migrations/20260427000001_fix_rls_recursion.sql` | RLS 再帰参照の修正 |
+| 6 | `supabase/migrations/20260503000001_music_links_replica_identity.sql` | music_links の REPLICA IDENTITY FULL |
+| 7 | `supabase/migrations/20260509000001_add_title_sort_order.sql` | music_links の title / sort_order 追加 |
+| 8 | `supabase/migrations/20260511000001_fix_participant_insert_vulnerability.sql` | participants 直接 INSERT 封鎖・join_session RPC 追加 |
+| 9 | `supabase/migrations/20260511000002_create_session_rpc.sql` | create_session RPC 追加 |
+| 10 | `supabase/migrations/20260511000003_music_links_update_policy.sql` | music_links 並び替え更新ポリシー追加 |
+| 11 | `supabase/migrations/20260511000004_ensure_session_rpcs.sql` | session RPC 再保証・実行権限付与 |
+| 12 | `supabase/migrations/20260511000005_kick_participant_rpc.sql` | ホストによる参加者キック RPC 追加 |
+| 13 | `supabase/migrations/20260511000006_leave_session_rpc.sql` | 参加者退出 RPC 追加 |
+| 14 | `supabase/migrations/20260512000001_prevent_duplicate_session_participants.sql` | 同一ユーザーの重複参加防止 |
+| 15 | `supabase/migrations/20260512000002_participants_photos_replica_identity.sql` | participants / photos の REPLICA IDENTITY FULL |
+| 16 | `supabase/migrations/20260513000001_add_session_started_at.sql` | sessions.started_at 追加 |
+| 17 | `supabase/migrations/20260513000002_music_playback_state.sql` | music_playback_state テーブル追加 |
+| 18 | `supabase/migrations/20260513000003_start_session_rpc.sql` | start_session RPC 追加 |
+| 19 | `supabase/migrations/20260513000004_music_links_host_delete_policy.sql` | ホストの music_links 削除ポリシー追加 |
+| 20 | `supabase/migrations/20260513000005_raise_session_capacity_to_five.sql` | セッション上限人数を5人に変更 |
 
-> **全ファイルの適用が必要**。写真・音楽機能は `20260426000002` 以降のテーブルと `20260426000003` のStorageバケットに依存する。
+> **全ファイルの適用が必要**。現在のフロントエンドは `create_session` / `join_session` RPC に依存するため、2026-05-11 以降のマイグレーションも本番に適用する。
 
 ---
 
@@ -204,6 +220,7 @@ npm run dev
 |------|-----------|
 | `Missing Supabase env vars` エラー | `.env.local` の値が未設定 → Dashboard の API タブで再確認 |
 | RLS エラー（403） | Anonymous Sign-In が無効 → Dashboard の Authentication で有効化 |
+| セッション作成で `create_session` が見つからない | 最新マイグレーション未適用 → 手順4のマイグレーションを全順で再実行 |
 | Realtime が届かない | テーブルがパブリケーションに追加されていない → 手順5を再実行 |
 | 写真アップロードが失敗する | Storage バケット `photos` が未作成 → 手順7（`20260426000003_storage_setup.sql` 適用）を実行 |
 | 音楽追加・写真追加が失敗する | `20260426000002_media_sharing.sql` 未適用 → 手順4のマイグレーションを全順で再実行 |
