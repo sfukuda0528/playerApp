@@ -20,7 +20,7 @@ const {
 vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: { getUser: mockGetUser },
-    from: (_table: string) => ({
+    from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: mockSelectSingle }) }),
       upsert: (data: unknown) => mockUpsert(data),
       update: (data: unknown) => ({ eq: () => mockUpdate(data) }),

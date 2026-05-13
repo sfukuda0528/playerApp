@@ -115,8 +115,7 @@ vi.mock('@dnd-kit/sortable', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   SortableContext: ({ children }: any) => children,
   verticalListSortingStrategy: {},
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useSortable: (_args: any) => ({
+  useSortable: () => ({
     attributes: {},
     listeners: {},
     setNodeRef: vi.fn(),

@@ -44,7 +44,7 @@ export default function MainPage() {
   const [qrUrl, setQrUrl] = useState('')
   const [qrError, setQrError] = useState(false)
 
-  const MAX_PARTICIPANTS = 4
+  const MAX_PARTICIPANTS = 5
 
   const resolveName = useCallback(
     (authId: string) => participants.find((p) => p.auth_id === authId)?.name ?? 'メンバー',
@@ -75,7 +75,7 @@ export default function MainPage() {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
-  }, [toast?.id])
+  }, [toast])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {

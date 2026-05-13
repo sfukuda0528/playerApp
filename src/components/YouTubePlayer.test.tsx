@@ -3,9 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import YouTubePlayer from './YouTubePlayer'
 
-const { mockPlayVideo, mockPauseVideo, ytProps } = vi.hoisted(() => ({
+const { mockPlayVideo, mockPauseVideo, mockGetPlayerState, ytProps } = vi.hoisted(() => ({
   mockPlayVideo: vi.fn(),
   mockPauseVideo: vi.fn(),
+  mockGetPlayerState: vi.fn(),
   ytProps: {
     onReady: undefined as ((e: { target: unknown }) => void) | undefined,
     onEnd: undefined as (() => void) | undefined,
@@ -26,7 +27,7 @@ vi.mock('react-youtube', () => ({
     ytProps.onEnd = props.onEnd
     ytProps.onError = props.onError
     ytProps.playerVars = props.opts?.playerVars
-    props.onReady?.({ target: { playVideo: mockPlayVideo, pauseVideo: mockPauseVideo } })
+    props.onReady?.({ target: { playVideo: mockPlayVideo, pauseVideo: mockPauseVideo, getPlayerState: mockGetPlayerState } })
     return (
       <div
         data-testid="yt-iframe"
@@ -52,6 +53,7 @@ const baseProps = {
 describe('YouTubePlayer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetPlayerState.mockReturnValue(1)
     baseProps.onPlayToggle = vi.fn()
     baseProps.onPrev = vi.fn()
     baseProps.onNext = vi.fn()
@@ -127,6 +129,29 @@ describe('YouTubePlayer', () => {
     render(<YouTubePlayer {...baseProps} onError={onError} />)
     act(() => { ytProps.onError?.() })
     expect(onError).toHaveBeenCalledOnce()
+  })
+
+  it('バックグラウンド中に終了していたら復帰時に onEnded を呼ぶ', () => {
+    mockGetPlayerState.mockReturnValue(0)
+    render(<YouTubePlayer {...baseProps} isPlaying={true} />)
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    expect(baseProps.onEnded).toHaveBeenCalledOnce()
+  })
+
+  it('復帰時の終了検知は同じ曲では重複して onEnded を呼ばない', () => {
+    mockGetPlayerState.mockReturnValue(0)
+    render(<YouTubePlayer {...baseProps} isPlaying={true} />)
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'))
+      window.dispatchEvent(new Event('pageshow'))
+    })
+
+    expect(baseProps.onEnded).toHaveBeenCalledOnce()
   })
 
   it('playlistId が渡されたとき data-playlist-id が設定される', () => {

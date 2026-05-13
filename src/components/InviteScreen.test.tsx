@@ -103,13 +103,13 @@ describe('InviteScreen', () => {
 
   it('参加者数を表示する', async () => {
     renderWithRoute()
-    expect(await screen.findByText(/2 \/ 4 人/)).toBeInTheDocument()
+    expect(await screen.findByText(/2 \/ 5 人/)).toBeInTheDocument()
   })
 
   it('リッチなメンバー概要を表示する', async () => {
     renderWithRoute()
     expect(await screen.findByText('参加中')).toBeInTheDocument()
-    expect(screen.getByText('空き枠 2')).toBeInTheDocument()
+    expect(screen.getByText('空き枠 3')).toBeInTheDocument()
     expect(screen.getByLabelText('Aliceのアバター（あなた）')).toHaveTextContent('A')
     expect(screen.getByLabelText('Bobのアバター')).toHaveTextContent('B')
   })
