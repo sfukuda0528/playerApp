@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
 import { useMusicLinks } from '../hooks/useMusicLinks'
 import { useAddMusicLink } from '../hooks/useAddMusicLink'
 import { useReorderMusicLink } from '../hooks/useReorderMusicLink'
+import { useMusicPlaybackState } from '../hooks/useMusicPlaybackState'
 import { useYouTubeSearch } from '../hooks/useYouTubeSearch'
 import type { VideoItem } from '../hooks/useYouTubeSearch'
 import { useYouTubeVideoTitle } from '../hooks/useYouTubeVideoTitle'
@@ -102,49 +103,47 @@ function SortableQueueItem({
 
 export default function MusicPanel({ sessionId, currentUserId, isHost = false, onMusicAdd }: Props) {
   const { links, optimisticReorder, optimisticDelete } = useMusicLinks(sessionId, {
-    onInsert: (link, prevLinks) => {
-      const newSortedLinks = [...prevLinks, link].sort((a, b) => a.sort_order - b.sort_order)
-      const insertedAt = newSortedLinks.findIndex(l => l.id === link.id)
-      if (prevLinks.length > 0) {
-        setCurrentIndex((prev) => insertedAt <= prev ? prev + 1 : prev)
-      }
-      setIsPlaying(true)
+    onInsert: (link) => {
       onMusicAdd?.(link)
     },
-    onUpdate: (prevLinks, newLinks) => {
-      const idx = currentIndexRef.current
-      const currentSongId = prevLinks[idx]?.id
-      if (!currentSongId) return
-      const newIdx = newLinks.findIndex(l => l.id === currentSongId)
-      if (newIdx !== -1 && newIdx !== idx) setCurrentIndex(newIdx)
-    },
   })
+  const { state: playbackState, error: playbackError, setCurrent, setPlaying } = useMusicPlaybackState(sessionId)
   const { addLink, addLinks, deleteLink, loading, error } = useAddMusicLink()
   const { reorder } = useReorderMusicLink()
   const { results, loading: searchLoading, error: searchError, search } = useYouTubeSearch()
   const { title: fetchedTitle, loading: titleLoading, fetchTitle, clear: clearTitle } = useYouTubeVideoTitle()
   const { fetchPlaylistItems, error: playlistError } = usePlaylistItems()
 
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [selectedSearchItem, setSelectedSearchItem] = useState<VideoItem | null>(null)
   const [playlistProgress, setPlaylistProgress] = useState<{ phase: 'fetching' | 'inserting'; total: number } | null>(null)
   const [skipToast, setSkipToast] = useState(false)
 
-  const currentIndexRef = useRef(0)
-  useEffect(() => { currentIndexRef.current = currentIndex }, [currentIndex])
-
   const skipToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sensors = useSensors(useSensor(PointerSensor))
+  const playbackCurrentIndex = playbackState?.current_music_link_id
+    ? links.findIndex(link => link.id === playbackState.current_music_link_id)
+    : -1
+  const currentIndex = playbackCurrentIndex >= 0
+    ? playbackCurrentIndex
+    : (isHost && links.length > 0 ? 0 : -1)
+  const currentLink = currentIndex >= 0 ? links[currentIndex] : undefined
+  const isPlaying = playbackState?.is_playing ?? false
 
   useEffect(() => {
-    if (links.length === 0 || currentIndex >= links.length) {
-      setIsPlaying(false)
-      setCurrentIndex(0)
+    if (!isHost) return
+    if (links.length === 0) {
+      if (playbackState?.current_music_link_id || playbackState?.is_playing) {
+        void setCurrent(null, false)
+      }
+      return
     }
-  }, [links.length, currentIndex])
+    const currentId = playbackState?.current_music_link_id
+    if (!currentId || !links.some(link => link.id === currentId)) {
+      void setCurrent(links[0].id, true)
+    }
+  }, [isHost, links, playbackState?.current_music_link_id, playbackState?.is_playing, setCurrent])
 
   useEffect(() => {
     return () => {
@@ -213,20 +212,22 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
   }
 
   const handleDelete = async (link: MusicLink, index: number) => {
-    const isCurrent = index === currentIndex
+    const isCurrent = link.id === currentLink?.id
+    if (isCurrent && isHost) {
+      const nextLink = links[index + 1] ?? links[index - 1] ?? null
+      const okState = await setCurrent(nextLink?.id ?? null, !!nextLink)
+      if (!okState) return
+    }
     const ok = await deleteLink(link.id)
     if (!ok) return
     optimisticDelete(link.id)
-    if (isCurrent) {
-      setIsPlaying(false)
-      setCurrentIndex(0)
-    } else if (index < currentIndex) {
-      setCurrentIndex((prev) => prev - 1)
-    }
   }
 
   const handleEnded = async () => {
     if (!currentLink) return
+    const nextLink = links[currentIndex + 1] ?? null
+    const okState = await setCurrent(nextLink?.id ?? null, !!nextLink)
+    if (!okState) return
     const ok = await deleteLink(currentLink.id)
     if (ok) optimisticDelete(currentLink.id)
   }
@@ -235,8 +236,12 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     if (!currentLink) return
     if (skipToastTimerRef.current) clearTimeout(skipToastTimerRef.current)
     setSkipToast(true)
-    void deleteLink(currentLink.id).then((ok) => {
-      if (ok) optimisticDelete(currentLink.id)
+    const nextLink = links[currentIndex + 1] ?? null
+    void setCurrent(nextLink?.id ?? null, !!nextLink).then((okState) => {
+      if (!okState) return
+      void deleteLink(currentLink.id).then((ok) => {
+        if (ok) optimisticDelete(currentLink.id)
+      })
     })
     skipToastTimerRef.current = setTimeout(() => setSkipToast(false), 3000)
   }
@@ -253,12 +258,6 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     const sorted = arrayMove(links, oldIndex, newIndex)
 
     optimisticReorder(sorted)
-
-    const currentLinkId = links[currentIndex]?.id
-    if (currentLinkId) {
-      const newCurrentIndex = sorted.findIndex(l => l.id === currentLinkId)
-      if (newCurrentIndex !== currentIndex) setCurrentIndex(newCurrentIndex)
-    }
 
     const prev = sorted[newIndex - 1]
     const next = sorted[newIndex + 1]
@@ -277,7 +276,6 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     await reorder(active.id as string, newSortOrder)
   }
 
-  const currentLink = links[currentIndex]
   const videoId = currentLink ? extractYouTubeId(currentLink.url) : null
   const playlistId = !videoId && currentLink ? extractPlaylistId(currentLink.url) : null
 
@@ -299,10 +297,14 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                 videoId={videoId ?? undefined}
                 playlistId={playlistId ?? undefined}
                 isPlaying={isPlaying}
-                onPlayToggle={() => setIsPlaying((p) => !p)}
+                onPlayToggle={() => void setPlaying(!isPlaying)}
                 onEnded={handleEnded}
                 onError={handleError}
-                onPrev={() => setCurrentIndex((prev) => (prev - 1 + links.length) % links.length)}
+                onPrev={() => {
+                  if (links.length === 0) return
+                  const prevIndex = currentIndex > 0 ? currentIndex - 1 : links.length - 1
+                  void setCurrent(links[prevIndex].id, true)
+                }}
                 onNext={handleEnded}
                 hasPrev={links.length > 1}
                 hasNext={links.length > 1}
@@ -323,7 +325,11 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
           className="group rounded-xl p-3"
           style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
         >
-          <summary className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+          <summary
+            role="button"
+            aria-label="キューを開閉"
+            className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden"
+          >
             <span className="flex items-center gap-1.5">
               <FontAwesomeIcon icon={faList} className="text-xs" />
               キュー
@@ -401,7 +407,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                 </button>
               </div>
               {searchError && <p role="alert" className="text-camp-destructive text-xs">{searchError}</p>}
-              {error && <p role="alert" className="text-camp-destructive text-xs">{error}</p>}
+              {(error ?? playbackError) && <p role="alert" className="text-camp-destructive text-xs">{error ?? playbackError}</p>}
               <ul className="flex flex-col gap-1.5">
                 {results.map((item) => (
                   <li
@@ -519,8 +525,8 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
                     : `${playlistProgress.total}件をキューに追加中...`}
                 </p>
               )}
-              {(error ?? playlistError) && (
-                <p role="alert" className="text-camp-destructive text-xs">{error ?? playlistError}</p>
+              {(error ?? playbackError ?? playlistError) && (
+                <p role="alert" className="text-camp-destructive text-xs">{error ?? playbackError ?? playlistError}</p>
               )}
             </TabsContent>
           </Tabs>

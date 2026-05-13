@@ -37,3 +37,11 @@ export interface MusicLink {
   sort_order: number
   created_at: string
 }
+
+export interface MusicPlaybackState {
+  session_id: string
+  current_music_link_id: string | null
+  is_playing: boolean
+  updated_by_auth_id: string
+  updated_at: string
+}

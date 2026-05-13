@@ -464,6 +464,24 @@ describe('MainPage - トースト', () => {
     expect(screen.getByText('Aliceさんが写真を追加しました')).toBeInTheDocument()
   })
 
+  it('トーストは下のコンテンツを押し下げない固定表示になる', async () => {
+    renderAsParticipant()
+    await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
+    const photo: Photo = {
+      id: 'ph-new', session_id: 'sess-1', uploader_auth_id: 'uid-host',
+      storage_path: 'x.jpg', created_at: '',
+    }
+
+    act(() => { capturedPhotosInsert.onInsert?.(photo) })
+
+    const toast = screen.getByRole('status')
+    expect(toast).toHaveClass('fixed')
+    expect(toast).toHaveClass('left-0')
+    expect(toast).toHaveClass('right-0')
+    expect(toast).toHaveClass('z-50')
+    expect(toast).not.toHaveClass('flex-shrink-0')
+  })
+
   it('音楽追加時: 追加者名のトーストが表示される', async () => {
     renderAsParticipant()
     await waitFor(() => expect(screen.getByTestId('photo-upload')).toBeInTheDocument())
