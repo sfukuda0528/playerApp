@@ -169,7 +169,7 @@ Dashboard → **Storage** → `photos` バケットが存在することを確�
 バケット仕様:
 - 名前: `photos`
 - 公開: **非公開**（RLSで同一セッション参加者のみ閲覧可）
-- ファイルサイズ上限: 5 MB
+- ファイルサイズ上限: 20 MB
 - 許可 MIME タイプ: `image/jpeg`, `image/png`, `image/webp`, `image/gif`, `image/heic`
 
 ---
