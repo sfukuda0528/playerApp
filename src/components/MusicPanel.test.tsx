@@ -115,8 +115,7 @@ vi.mock('@dnd-kit/sortable', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   SortableContext: ({ children }: any) => children,
   verticalListSortingStrategy: {},
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  useSortable: (_args: any) => ({
+  useSortable: () => ({
     attributes: {},
     listeners: {},
     setNodeRef: vi.fn(),
@@ -286,6 +285,23 @@ describe('MusicPanel', () => {
       mockLinks.value = [link2]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
+    })
+
+    it('管理者には他人のリンクにも削除ボタンが表示されるが YouTubePlayer は表示されない', () => {
+      mockLinks.value = [link2]
+      mockPlaybackState.value = playbackState('ml-2', true)
+      render(
+        <MusicPanel
+          sessionId="sess-1"
+          currentUserId="uid-me"
+          isHost={false}
+          canManage={true}
+        />
+      )
+
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
+      expect(screen.queryByTestId('youtube-player')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('ambient-player')).not.toBeInTheDocument()
     })
 
     it('削除ボタンクリックで deleteLink を呼ぶ', async () => {

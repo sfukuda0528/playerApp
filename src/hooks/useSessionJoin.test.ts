@@ -90,7 +90,7 @@ describe('useSessionJoin', () => {
     expect(result.current.error).toBe('セッションが見つかりません')
   })
 
-  it('満員(4人): nullを返し「満員です」をセット', async () => {
+  it('満員(5人): nullを返し「満員です」をセット', async () => {
     mockRpc.mockResolvedValue({
       data: null,
       error: { message: 'session_full' },

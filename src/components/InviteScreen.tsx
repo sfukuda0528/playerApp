@@ -6,6 +6,7 @@ import { faCrown, faPlay } from '@fortawesome/free-solid-svg-icons'
 import { useParticipants } from '../hooks/useParticipants'
 import { supabase } from '../lib/supabase'
 import type { Session } from '../types/session'
+import { saveLastSession } from '../utils/lastSession'
 
 export default function InviteScreen() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -19,13 +20,16 @@ export default function InviteScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const { participants } = useParticipants(sessionId ?? '')
 
-  const MAX_PARTICIPANTS = 4
+  const MAX_PARTICIPANTS = 5
 
   useEffect(() => {
     setSession(routeSession)
   }, [routeSession])
 
-  const joinUrl = `${window.location.origin}/join/${session?.code}`
+  useEffect(() => {
+    if (session?.id && session.status === 'active') saveLastSession(session)
+  }, [session])
+
   const sortedParticipants = [...participants].sort((a, b) =>
     a.auth_id === session?.host_auth_id ? -1 :
     b.auth_id === session?.host_auth_id ? 1 : 0
@@ -35,9 +39,10 @@ export default function InviteScreen() {
 
   useEffect(() => {
     if (session?.code) {
+      const joinUrl = `${window.location.origin}/join/${session.code}`
       QRCode.toDataURL(joinUrl).then(setQrUrl).catch(() => setQrError(true))
     }
-  }, [joinUrl])
+  }, [session?.code])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user }, error }) => {

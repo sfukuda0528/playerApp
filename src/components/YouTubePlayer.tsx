@@ -1,7 +1,9 @@
 import YouTube from 'react-youtube'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBackwardStep, faForwardStep, faPlay, faPause } from '@fortawesome/free-solid-svg-icons'
+
+const YOUTUBE_PLAYER_STATE_ENDED = 0
 
 interface Props {
   videoId?: string
@@ -19,7 +21,22 @@ interface Props {
 export default function YouTubePlayer({
   videoId, playlistId, isPlaying, onPlayToggle, onEnded, onError, onPrev, onNext, hasPrev, hasNext,
 }: Props) {
-  const playerRef = useRef<{ playVideo: () => void; pauseVideo: () => void } | null>(null)
+  const playerRef = useRef<{
+    playVideo: () => void
+    pauseVideo: () => void
+    getPlayerState?: () => number
+  } | null>(null)
+  const endedReportedRef = useRef(false)
+
+  useEffect(() => {
+    endedReportedRef.current = false
+  }, [videoId, playlistId])
+
+  const reportEnded = useCallback(() => {
+    if (endedReportedRef.current) return
+    endedReportedRef.current = true
+    onEnded()
+  }, [onEnded])
 
   useEffect(() => {
     const p = playerRef.current
@@ -31,6 +48,25 @@ export default function YouTubePlayer({
     }
   }, [isPlaying])
 
+  useEffect(() => {
+    if (!isPlaying) return
+
+    const checkEndedOnResume = () => {
+      const state = playerRef.current?.getPlayerState?.()
+      if (state === YOUTUBE_PLAYER_STATE_ENDED) reportEnded()
+    }
+
+    document.addEventListener('visibilitychange', checkEndedOnResume)
+    window.addEventListener('focus', checkEndedOnResume)
+    window.addEventListener('pageshow', checkEndedOnResume)
+
+    return () => {
+      document.removeEventListener('visibilitychange', checkEndedOnResume)
+      window.removeEventListener('focus', checkEndedOnResume)
+      window.removeEventListener('pageshow', checkEndedOnResume)
+    }
+  }, [isPlaying, reportEnded])
+
   const playerVars = playlistId
     ? { autoplay: isPlaying ? 1 : 0, playsinline: 1, list: playlistId, listType: 'playlist' as const }
     : { autoplay: isPlaying ? 1 : 0, playsinline: 1 }
@@ -41,10 +77,10 @@ export default function YouTubePlayer({
         videoId={videoId ?? ''}
         opts={{ width: '200', height: '113', playerVars }}
         onReady={(event) => {
-          playerRef.current = event.target as { playVideo: () => void; pauseVideo: () => void }
+          playerRef.current = event.target as { playVideo: () => void; pauseVideo: () => void; getPlayerState?: () => number }
           if (isPlaying) event.target.playVideo()
         }}
-        onEnd={onEnded}
+        onEnd={reportEnded}
         onError={onError}
       />
       <div className="flex justify-center items-center gap-5">
