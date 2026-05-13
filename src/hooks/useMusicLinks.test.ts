@@ -114,6 +114,21 @@ describe('useMusicLinks', () => {
     expect(result.current.links).toHaveLength(0)
   })
 
+  it('復帰時の再取得では Realtime で取りこぼした削除をローカルキューから除去する', async () => {
+    mockInitialFetch
+      .mockResolvedValueOnce({ data: [link1, link2], error: null })
+      .mockResolvedValueOnce({ data: [link2], error: null })
+
+    const { result } = renderHook(() => useMusicLinks('sess-1'))
+    await waitFor(() => expect(result.current.links.map((link) => link.id)).toEqual(['ml-1', 'ml-2']))
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    await waitFor(() => expect(result.current.links.map((link) => link.id)).toEqual(['ml-2']))
+  })
+
   it('optimisticDelete: 指定リンクを即座に除去する', async () => {
     mockInitialFetch.mockResolvedValue({ data: [link1, link2], error: null })
     const { result } = renderHook(() => useMusicLinks('sess-1'))
