@@ -40,10 +40,12 @@ const state1: MusicPlaybackState = {
 
 describe('useMusicPlaybackState', () => {
   let handlers: Array<(payload: unknown) => void> = []
+  let subscriptionCallback: ((status: string) => void) | undefined
 
   beforeEach(() => {
     vi.clearAllMocks()
     handlers = []
+    subscriptionCallback = undefined
     mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-host' } } })
     mockSelectSingle.mockResolvedValue({ data: state1, error: null })
     mockUpsert.mockResolvedValue({ error: null })
@@ -54,6 +56,7 @@ describe('useMusicPlaybackState', () => {
       return channelApi
     })
     mockSubscribe.mockImplementation((callback?: (status: string) => void) => {
+      subscriptionCallback = callback
       callback?.('SUBSCRIBED')
       return channelApi
     })
@@ -117,5 +120,15 @@ describe('useMusicPlaybackState', () => {
     const { unmount } = renderHook(() => useMusicPlaybackState('sess-1'))
     unmount()
     expect(mockRemoveChannel).toHaveBeenCalledOnce()
+  })
+
+  it('購読済みチャンネルの CLOSED は同期失敗として表示しない', async () => {
+    const { result } = renderHook(() => useMusicPlaybackState('sess-1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    act(() => { subscriptionCallback?.('CLOSED') })
+
+    expect(result.current.error).toBeNull()
+    expect(result.current.state).toEqual(state1)
   })
 })

@@ -9,6 +9,7 @@ export function useMusicPlaybackState(sessionId: string) {
 
   useEffect(() => {
     let cancelled = false
+    let subscribed = false
 
     const fetchState = () => {
       supabase
@@ -43,8 +44,10 @@ export function useMusicPlaybackState(sessionId: string) {
       .subscribe((status) => {
         if (cancelled) return
         if (status === 'SUBSCRIBED') {
+          subscribed = true
+          setError(null)
           fetchState()
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || (!subscribed && status === 'CLOSED')) {
           setError('キューの同期に失敗しました')
           setLoading(false)
         }
