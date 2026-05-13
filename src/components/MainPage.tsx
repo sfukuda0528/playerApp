@@ -231,7 +231,7 @@ export default function MainPage() {
       {toast && (
         <div
           role="status"
-          className="text-camp-cream text-sm px-4 py-2 text-center flex-shrink-0 flex items-center justify-center gap-2 animate-slide-down"
+          className="fixed left-0 right-0 top-[52px] z-50 text-camp-cream text-sm px-4 py-2 text-center flex items-center justify-center gap-2 animate-slide-down"
           style={{ background: 'linear-gradient(135deg, rgba(61,32,3,0.92), rgba(90,40,0,0.92))' }}
         >
           <FontAwesomeIcon icon={toast.icon} />
