@@ -7,6 +7,7 @@ import InviteScreen from './InviteScreen'
 const {
   mockNavigate,
   mockGetUser,
+  mockStartSessionRpc,
   mockUpdateSession,
   mockFetchSession,
   mockRemoveChannel,
@@ -14,6 +15,7 @@ const {
 } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockGetUser: vi.fn(),
+  mockStartSessionRpc: vi.fn(),
   mockUpdateSession: vi.fn(),
   mockFetchSession: vi.fn(),
   mockRemoveChannel: vi.fn(),
@@ -38,6 +40,7 @@ vi.mock('../hooks/useParticipants', () => ({
 vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: { getUser: mockGetUser },
+    rpc: mockStartSessionRpc,
     from: () => ({
       update: (values: unknown) => ({
         eq: (column: string, value: string) => mockUpdateSession(values, column, value),
@@ -79,6 +82,10 @@ describe('InviteScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-alice' } }, error: null })
+    mockStartSessionRpc.mockResolvedValue({
+      data: { ...fakeSession, started_at: '2026-05-13T00:00:00Z' },
+      error: null,
+    })
     mockUpdateSession.mockResolvedValue({ data: null, error: null })
     mockFetchSession.mockResolvedValue({ data: fakeSession, error: null })
     realtimeCallbacks.sessionUpdate = null
@@ -115,15 +122,24 @@ describe('InviteScreen', () => {
     })
   })
 
-  it('スタートボタンクリックで開始時刻を保存する', async () => {
+  it('スタートボタンクリックでsessionsを直接UPDATEしない', async () => {
     renderWithRoute()
     await userEvent.click(await screen.findByRole('button', { name: 'スタート' }))
 
-    expect(mockUpdateSession).toHaveBeenCalledWith(
-      expect.objectContaining({ started_at: expect.any(String) }),
-      'id',
-      'sess-1'
-    )
+    expect(mockUpdateSession).not.toHaveBeenCalled()
+  })
+
+  it('スタートボタンクリックでホスト専用RPCを呼び、返却された開始済みセッションで遷移する', async () => {
+    const startedSession = { ...fakeSession, started_at: '2026-05-13T00:00:00Z' }
+    mockStartSessionRpc.mockResolvedValue({ data: startedSession, error: null })
+
+    renderWithRoute()
+    await userEvent.click(await screen.findByRole('button', { name: 'スタート' }))
+
+    expect(mockStartSessionRpc).toHaveBeenCalledWith('start_session', { p_session_id: 'sess-1' })
+    expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1', {
+      state: { session: startedSession },
+    })
   })
 
   it('非ホストにはスタートボタンを表示しない', async () => {

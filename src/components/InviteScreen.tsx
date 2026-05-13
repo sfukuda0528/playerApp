@@ -97,18 +97,16 @@ export default function InviteScreen() {
   const handleStart = async () => {
     if (!session) return
 
-    const startedAt = new Date().toISOString()
-    const startedSession = { ...session, started_at: startedAt } as Session
-    const { error } = await supabase
-      .from('sessions')
-      .update({ started_at: startedAt })
-      .eq('id', sessionId)
+    const { data, error } = await supabase.rpc('start_session', {
+      p_session_id: sessionId,
+    })
 
     if (error) {
       console.error('Failed to start session:', error)
       return
     }
 
+    const startedSession = data as Session
     setSession(startedSession)
     navigate(`/session/${sessionId}`, { state: { session: startedSession } })
   }
