@@ -227,6 +227,24 @@ describe('MusicPanel', () => {
       expect(screen.queryByText(link1.url)).not.toBeInTheDocument()
     })
 
+    it('キューは検索・URL入力タブの上にアコーディオンとして表示される', async () => {
+      mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
+
+      const queueToggle = screen.getByRole('button', { name: 'キューを開閉' })
+      const queueDetails = queueToggle.closest('details')
+      const tabs = screen.getByRole('tablist')
+
+      expect(queueDetails).toHaveAttribute('open')
+      expect(queueDetails?.compareDocumentPosition(tabs)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      expect(screen.getByText('Never Gonna Give You Up')).toBeInTheDocument()
+
+      await userEvent.click(queueToggle)
+
+      expect(queueDetails).not.toHaveAttribute('open')
+      expect(screen.queryByText('Never Gonna Give You Up')).not.toBeVisible()
+    })
+
     it('キューアイテムにドラッグハンドルが表示される', () => {
       mockLinks.value = [link1]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)

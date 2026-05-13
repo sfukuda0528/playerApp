@@ -325,7 +325,11 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
           className="group rounded-xl p-3"
           style={{ background: 'linear-gradient(170deg, #fff8f0, #fdf6ec)', boxShadow: '0 2px 10px rgba(124,74,30,0.07)', border: '1px solid rgba(240,200,150,0.4)' }}
         >
-          <summary className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
+          <summary
+            role="button"
+            aria-label="キューを開閉"
+            className="list-none cursor-pointer select-none text-camp-amber text-xs font-bold uppercase tracking-wider flex items-center justify-between gap-2 [&::-webkit-details-marker]:hidden"
+          >
             <span className="flex items-center gap-1.5">
               <FontAwesomeIcon icon={faList} className="text-xs" />
               キュー
