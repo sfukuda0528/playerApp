@@ -69,6 +69,14 @@ export default function Slideshow({ photos }: Props) {
 
   const safeIndex = currentIndex % photos.length
   const currentUrl = photoUrls[safeIndex]
+  const currentPhoto = photos[safeIndex]
+  const uploadedTime = currentPhoto
+    ? new Intl.DateTimeFormat('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Tokyo',
+    }).format(new Date(currentPhoto.created_at))
+    : null
 
   return (
     <div ref={containerRef} aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
@@ -89,9 +97,16 @@ export default function Slideshow({ photos }: Props) {
           >
             ✕
           </button>
-          <span className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
-            {safeIndex + 1} / {photos.length}
-          </span>
+          <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1">
+            <span className="bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+              {safeIndex + 1} / {photos.length}
+            </span>
+            {uploadedTime && (
+              <span className="bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
+                {uploadedTime} にアップロード
+              </span>
+            )}
+          </div>
           <button
             type="button"
             aria-label="前の写真"
@@ -114,7 +129,12 @@ export default function Slideshow({ photos }: Props) {
         </>
       )}
       {!isFullscreen && (
-        <div className="absolute bottom-2 right-2 flex items-center gap-1">
+        <div className="absolute bottom-2 right-2 flex flex-wrap items-center justify-end gap-1">
+          {uploadedTime && (
+            <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
+              {uploadedTime} にアップロード
+            </span>
+          )}
           <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
             {safeIndex + 1} / {photos.length}
           </span>

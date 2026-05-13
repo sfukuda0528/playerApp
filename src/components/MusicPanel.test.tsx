@@ -336,6 +336,19 @@ describe('MusicPanel', () => {
       expect(mockReorder).not.toHaveBeenCalled()
     })
 
+    it('再生中の曲をドラッグしても reorder を呼ばない', async () => {
+      mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1', true)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+
+      await act(async () => {
+        capturedOnDragEnd.fn?.({ active: { id: 'ml-1' }, over: { id: 'ml-2' } })
+      })
+
+      expect(mockReorder).not.toHaveBeenCalled()
+      expect(mockOptimisticReorder).not.toHaveBeenCalled()
+    })
+
     it('onDragEnd 発火で optimisticReorder を呼ぶ（楽観的更新）', async () => {
       mockLinks.value = [link1, link2]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)

@@ -62,6 +62,13 @@ describe('Slideshow', () => {
     expect(screen.getByText('1 / 2')).toBeInTheDocument()
   })
 
+  it('現在表示中写真のアップロード時刻を表示する', async () => {
+    await act(async () => {
+      render(<Slideshow photos={[photo1, photo2]} />)
+    })
+    expect(screen.getByText('19:00 にアップロード')).toBeInTheDocument()
+  })
+
   it('5秒後: 次の写真へ自動進行する', async () => {
     await act(async () => {
       render(<Slideshow photos={[photo1, photo2]} />)
@@ -71,6 +78,7 @@ describe('Slideshow', () => {
       'src', 'https://example.com/sess-1/002_b.jpg'
     )
     expect(screen.getByText('2 / 2')).toBeInTheDocument()
+    expect(screen.getByText('19:01 にアップロード')).toBeInTheDocument()
   })
 
   it('最後の写真から最初に戻る', async () => {

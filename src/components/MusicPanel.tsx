@@ -42,8 +42,11 @@ function SortableQueueItem({
   loading: boolean
   onDelete: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: link.id })
   const isCurrent = index === currentIndex
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: link.id,
+    disabled: isCurrent,
+  })
   const canDelete = isHost || link.added_by_auth_id === currentUserId
   return (
     <li
@@ -71,7 +74,12 @@ function SortableQueueItem({
         {...attributes}
         {...listeners}
         onContextMenu={(e) => e.preventDefault()}
-        className="cursor-grab flex-shrink-0 text-camp-brown/30 hover:text-camp-brown/60 transition-colors ml-1 touch-none select-none"
+        disabled={isCurrent}
+        className={`flex-shrink-0 transition-colors ml-1 touch-none select-none ${
+          isCurrent
+            ? 'cursor-not-allowed text-camp-brown/15'
+            : 'cursor-grab text-camp-brown/30 hover:text-camp-brown/60'
+        }`}
       >
         <FontAwesomeIcon icon={faGripVertical} className="text-sm" />
       </button>
@@ -253,6 +261,7 @@ export default function MusicPanel({ sessionId, currentUserId, isHost = false, o
     const oldIndex = links.findIndex(l => l.id === active.id)
     const newIndex = links.findIndex(l => l.id === over.id)
 
+    if (oldIndex === currentIndex) return
     if (newIndex < currentIndex) return
 
     const sorted = arrayMove(links, oldIndex, newIndex)

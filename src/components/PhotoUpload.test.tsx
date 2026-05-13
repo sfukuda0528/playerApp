@@ -71,6 +71,33 @@ describe('PhotoUpload', () => {
     expect(mockUpload).toHaveBeenCalledWith('sess-1', file)
   })
 
+  it('複数ファイル選択後に各ファイルを順番にuploadする', async () => {
+    mockUpload.mockResolvedValue(true)
+    render(
+      <PhotoUpload sessionId="sess-1" photos={[]} currentUserId="uid-me" />
+    )
+    const input = screen.getByLabelText('写真を追加')
+    expect(input).toHaveAttribute('multiple')
+    const files = [
+      new File(['img-1'], 'photo-1.jpg', { type: 'image/jpeg' }),
+      new File(['img-2'], 'photo-2.jpg', { type: 'image/jpeg' }),
+    ]
+    await userEvent.upload(input, files)
+    expect(mockUpload).toHaveBeenNthCalledWith(1, 'sess-1', files[0])
+    expect(mockUpload).toHaveBeenNthCalledWith(2, 'sess-1', files[1])
+  })
+
+  it('自分の写真枚数と全体の写真枚数を表示する', async () => {
+    await act(async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto, otherPhoto]} currentUserId="uid-me" />
+      )
+    })
+    expect(screen.getByText('自分の写真')).toBeInTheDocument()
+    expect(screen.getByText('1枚')).toBeInTheDocument()
+    expect(screen.getByText('全体 2枚')).toBeInTheDocument()
+  })
+
   it('自分の写真には削除ボタンが表示される', async () => {
     await act(async () => {
       render(
