@@ -2,14 +2,14 @@ import { render, screen, waitFor, act, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import MusicPanel from './MusicPanel'
-import type { MusicLink } from '../types/session'
+import type { MusicLink, MusicPlaybackState } from '../types/session'
 
 const {
   mockAddLink, mockDeleteLink, mockLinks, mockYouTubePlayer,
   mockSearch, mockSearchResults, mockFetchTitle, mockFetchedTitle,
   mockReorder, mockOptimisticReorder, mockOptimisticDelete, capturedOptions, capturedOnDragEnd, mockError,
   mockAddLinks, mockFetchPlaylistItems, mockPlaylistError,
-  mockAmbientPlayer,
+  mockAmbientPlayer, mockPlaybackState, mockPlaybackError, mockSetCurrent, mockSetPlaying,
 } = vi.hoisted(() => ({
   mockAddLink: vi.fn(),
   mockDeleteLink: vi.fn(),
@@ -29,6 +29,10 @@ const {
   mockFetchPlaylistItems: vi.fn(),
   mockPlaylistError: { value: null as string | null },
   mockAmbientPlayer: vi.fn(),
+  mockPlaybackState: { value: null as MusicPlaybackState | null },
+  mockPlaybackError: { value: null as string | null },
+  mockSetCurrent: vi.fn(),
+  mockSetPlaying: vi.fn(),
 }))
 
 vi.mock('../hooks/useMusicLinks', () => ({
@@ -56,6 +60,16 @@ vi.mock('../hooks/useAddMusicLink', () => ({
 
 vi.mock('../hooks/useReorderMusicLink', () => ({
   useReorderMusicLink: () => ({ reorder: mockReorder }),
+}))
+
+vi.mock('../hooks/useMusicPlaybackState', () => ({
+  useMusicPlaybackState: () => ({
+    state: mockPlaybackState.value,
+    loading: false,
+    error: mockPlaybackError.value,
+    setCurrent: mockSetCurrent,
+    setPlaying: mockSetPlaying,
+  }),
 }))
 
 vi.mock('../hooks/useYouTubeSearch', () => ({
@@ -144,6 +158,16 @@ const playlistLink: MusicLink = {
   sort_order: 3000, created_at: '2026-04-26T10:02:00Z',
 }
 
+function playbackState(currentMusicLinkId: string | null, isPlaying = false): MusicPlaybackState {
+  return {
+    session_id: 'sess-1',
+    current_music_link_id: currentMusicLinkId,
+    is_playing: isPlaying,
+    updated_by_auth_id: 'uid-host',
+    updated_at: '2026-05-13T00:00:00Z',
+  }
+}
+
 describe('MusicPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -151,6 +175,8 @@ describe('MusicPanel', () => {
     mockSearchResults.value = []
     mockFetchedTitle.value = null
     mockError.value = null
+    mockPlaybackState.value = null
+    mockPlaybackError.value = null
     capturedOptions.onInsert = undefined
     capturedOnDragEnd.fn = undefined
     mockAddLinks.mockResolvedValue(true)
@@ -167,6 +193,8 @@ describe('MusicPanel', () => {
     mockAddLink.mockResolvedValue(true)
     mockDeleteLink.mockResolvedValue(true)
     mockReorder.mockResolvedValue(true)
+    mockSetCurrent.mockResolvedValue(true)
+    mockSetPlaying.mockResolvedValue(true)
   })
 
   describe('キュー表示', () => {
@@ -177,12 +205,14 @@ describe('MusicPanel', () => {
 
     it('links があるとき YouTubePlayer に videoId が渡る', () => {
       mockLinks.value = [link1]
+      mockPlaybackState.value = playbackState('ml-1')
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-video-id', 'dQw4w9WgXcQ')
     })
 
     it('プレイリスト URL の link で playlistId が YouTubePlayer に渡る', () => {
       mockLinks.value = [playlistLink]
+      mockPlaybackState.value = playbackState('ml-pl')
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(mockYouTubePlayer).toHaveBeenCalledWith(
         expect.objectContaining({ playlistId: 'PLxxx', videoId: undefined }),
@@ -205,10 +235,21 @@ describe('MusicPanel', () => {
 
     it('先頭リンクに aria-current が付与される', () => {
       mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1')
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
       const items = screen.getAllByRole('listitem')
       expect(items[0]).toHaveAttribute('aria-current', 'true')
       expect(items[1]).not.toHaveAttribute('aria-current', 'true')
+    })
+
+    it('playback state の current_music_link_id の曲に aria-current が付与される', () => {
+      mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-2', true)
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+      const items = screen.getAllByRole('listitem')
+      expect(items[0]).not.toHaveAttribute('aria-current', 'true')
+      expect(items[1]).toHaveAttribute('aria-current', 'true')
+      expect(screen.getByTestId('youtube-player')).toHaveAttribute('data-video-id', 'abc1234')
     })
 
     it('自分のリンクには削除ボタンが表示される', () => {
@@ -598,14 +639,17 @@ describe('MusicPanel', () => {
 
     it('handleEnded で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1', true)
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
+      expect(mockSetCurrent).toHaveBeenCalledWith('ml-2', true)
       expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
     })
 
     it('handleEnded は削除成功後にキューから即時除去する', async () => {
       mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1', true)
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
 
@@ -616,28 +660,33 @@ describe('MusicPanel', () => {
 
     it('handleEnded 後 links 更新で次の曲が aria-current になる', async () => {
       mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1', true)
       const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onEnded = mockYouTubePlayer.mock.calls[0][0].onEnded as () => Promise<void>
       await act(async () => { await onEnded() })
       mockLinks.value = [link2]
+      mockPlaybackState.value = playbackState('ml-2', true)
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
     })
 
-    it('空キューに最初の曲が INSERT されたとき isPlaying が true になる', () => {
-      mockLinks.value = []
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
+    it('空キューに最初の曲が INSERT されたとき onMusicAdd コールバックを呼ぶ', () => {
+      const onMusicAdd = vi.fn()
       mockLinks.value = [link1]
+      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} onMusicAdd={onMusicAdd} />)
       act(() => { capturedOptions.onInsert?.(link1, []) })
-      expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
+      expect(onMusicAdd).toHaveBeenCalledWith(link1)
     })
 
-    it('INSERT 到着（未再生）で isPlaying が true になる', () => {
+    it('ホストの再生切り替えで playback state を更新する', async () => {
       mockLinks.value = [link1]
+      mockPlaybackState.value = playbackState('ml-1', false)
+      mockYouTubePlayer.mockImplementation(({ onPlayToggle }: { onPlayToggle: () => void }) => (
+        <button type="button" onClick={onPlayToggle}>toggle-player</button>
+      ))
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
-      expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(false)
-      act(() => { capturedOptions.onInsert?.(link2, [link1]) })
-      expect(mockYouTubePlayer.mock.calls.at(-1)?.[0].isPlaying).toBe(true)
+      await userEvent.click(screen.getByRole('button', { name: 'toggle-player' }))
+      expect(mockSetPlaying).toHaveBeenCalledWith(true)
     })
 
     it('INSERT 到着時: onMusicAdd コールバックを呼ぶ', () => {
@@ -648,41 +697,39 @@ describe('MusicPanel', () => {
       expect(onMusicAdd).toHaveBeenCalledWith(link2)
     })
 
-    it('先頭に INSERT されたとき currentIndex が +1 される（再生中の曲が変わらない）', () => {
+    it('先頭に INSERT されたとき current_music_link_id の曲が再生中のままになる', () => {
       const newLink: MusicLink = {
         id: 'ml-new', session_id: 'sess-1', added_by_auth_id: 'uid-other',
         url: 'https://youtu.be/new', title: '次に再生される曲',
         sort_order: 0, created_at: '2026-04-26T10:02:00Z',
       }
       mockLinks.value = [link1, link2]
-      render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
-      // 初期状態: currentIndex=0, link1 が再生中
+      mockPlaybackState.value = playbackState('ml-1', true)
+      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'true')
 
-      // newLink が先頭（sort_order=0）に挿入される
-      // prevLinks=[link1, link2], newLink を次に再生 → insertedAt=0 → currentIndex: 0→1
       act(() => { capturedOptions.onInsert?.(newLink, [link1, link2]) })
 
-      // links も先頭にnewLinkが追加された状態に更新
       mockLinks.value = [newLink, link1, link2]
-      const { rerender } = render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       rerender(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
 
-      // currentIndex=1 になっているので link1（index=1）が aria-current
       const items = screen.getAllByRole('listitem')
       expect(items[1]).toHaveAttribute('aria-current', 'true')
     })
 
-    it('onError 発火で deleteLink を呼ぶ', () => {
+    it('onError 発火で deleteLink を呼ぶ', async () => {
       mockLinks.value = [link1, link2]
+      mockPlaybackState.value = playbackState('ml-1', true)
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
-      expect(mockDeleteLink).toHaveBeenCalledWith('ml-1')
+      expect(mockSetCurrent).toHaveBeenCalledWith('ml-2', true)
+      await waitFor(() => expect(mockDeleteLink).toHaveBeenCalledWith('ml-1'))
     })
 
     it('onError 発火でスキップトーストが表示される', () => {
       mockLinks.value = [link1]
+      mockPlaybackState.value = playbackState('ml-1', true)
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
@@ -692,6 +739,7 @@ describe('MusicPanel', () => {
     it('スキップトーストは3秒後に消える', () => {
       vi.useFakeTimers()
       mockLinks.value = [link1]
+      mockPlaybackState.value = playbackState('ml-1', true)
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" isHost={true} />)
       const onError = mockYouTubePlayer.mock.calls.at(-1)?.[0].onError as () => void
       act(() => { onError() })
