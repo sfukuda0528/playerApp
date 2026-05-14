@@ -8,6 +8,9 @@ import { supabase } from '../lib/supabase'
 import type { Session } from '../types/session'
 import { saveLastSession } from '../utils/lastSession'
 
+const isValidSessionCode = (code: unknown): code is string =>
+  typeof code === 'string' && /^\d{6}$/.test(code)
+
 export default function InviteScreen() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const location = useLocation()
@@ -84,7 +87,14 @@ export default function InviteScreen() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` },
         (payload) => {
-          setSession(payload.new as Session)
+          const updatedSession = payload.new as Session
+          setSession((prev) => ({
+            ...(prev ?? updatedSession),
+            ...updatedSession,
+            code: isValidSessionCode(updatedSession.code)
+              ? updatedSession.code
+              : prev?.code ?? updatedSession.code,
+          }))
         }
       )
       .subscribe()
