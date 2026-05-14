@@ -12,6 +12,7 @@ const {
   mockUpdateSession,
   mockFetchSession,
   mockRemoveChannel,
+  mockParticipants,
   realtimeCallbacks,
 } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -20,6 +21,10 @@ const {
   mockUpdateSession: vi.fn(),
   mockFetchSession: vi.fn(),
   mockRemoveChannel: vi.fn(),
+  mockParticipants: [
+    { id: 'p-1', auth_id: 'uid-alice', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+    { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+  ],
   realtimeCallbacks: { sessionUpdate: null as ((payload: { new: typeof fakeSession & { started_at?: string | null } }) => void) | null },
 }))
 
@@ -32,10 +37,7 @@ vi.mock('qrcode', () => ({
 }))
 vi.mock('../hooks/useParticipants', () => ({
   useParticipants: () => ({
-    participants: [
-      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice', session_id: 'sess-1', joined_at: '' },
-      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
-    ],
+    participants: mockParticipants,
   }),
 }))
 vi.mock('../lib/supabase', () => ({
@@ -90,6 +92,12 @@ describe('InviteScreen', () => {
     })
     mockUpdateSession.mockResolvedValue({ data: null, error: null })
     mockFetchSession.mockResolvedValue({ data: fakeSession, error: null })
+    mockParticipants.splice(
+      0,
+      mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+    )
     realtimeCallbacks.sessionUpdate = null
   })
 
@@ -217,5 +225,23 @@ describe('InviteScreen', () => {
     const items = screen.getAllByRole('listitem')
     expect(items[0]).toHaveTextContent('Alice')
     expect(items[1]).toHaveTextContent('Bob')
+  })
+
+  it('keeps the invite code readable when the waiting member row is full', async () => {
+    mockParticipants.splice(
+      0,
+      mockParticipants.length,
+      { id: 'p-1', auth_id: 'uid-alice', name: 'Alice', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-2', auth_id: 'uid-bob', name: 'Bob', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-3', auth_id: 'uid-chris', name: 'Chris', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-4', auth_id: 'uid-dana', name: 'Dana', session_id: 'sess-1', joined_at: '' },
+      { id: 'p-5', auth_id: 'uid-erin', name: 'Erin', session_id: 'sess-1', joined_at: '' },
+    )
+
+    renderWithRoute()
+
+    const codeBadge = await screen.findByText('472819')
+    expect(codeBadge).toHaveClass('whitespace-nowrap')
+    expect(screen.getByLabelText('Aliceのアバター（あなた）').parentElement).toHaveClass('flex-wrap')
   })
 })

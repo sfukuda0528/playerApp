@@ -135,7 +135,7 @@ export default function InviteScreen() {
             <p className="text-camp-destructive text-xs">QR生成に失敗</p>
           ) : null}
           <span
-            className="text-camp-cream font-bold tracking-widest px-6 py-1.5 rounded-lg text-lg"
+            className="max-w-full whitespace-nowrap text-camp-cream font-bold tracking-widest px-6 py-1.5 rounded-lg text-lg"
             style={{ background: 'linear-gradient(135deg, #e07b39, #c8601a)' }}
           >
             {session?.code}
@@ -159,7 +159,7 @@ export default function InviteScreen() {
                 空き枠 {emptySlotCount}
               </span>
             </div>
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               {sortedParticipants.map((p) => {
                 const isParticipantHost = p.auth_id === session?.host_auth_id
                 const isCurrentUser = p.auth_id === currentUserId
