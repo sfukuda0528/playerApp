@@ -227,6 +227,21 @@ describe('InviteScreen', () => {
     expect(items[1]).toHaveTextContent('Bob')
   })
 
+  it('keeps the six digit invite code when a session realtime update has a truncated code', async () => {
+    renderWithRoute()
+
+    await waitFor(() => expect(realtimeCallbacks.sessionUpdate).not.toBeNull())
+
+    act(() => {
+      realtimeCallbacks.sessionUpdate?.({
+        new: { ...fakeSession, code: '3', last_active_at: '2026-05-15T00:00:00Z' },
+      })
+    })
+
+    expect(screen.getByText('472819')).toBeInTheDocument()
+    expect(screen.queryByText('3')).not.toBeInTheDocument()
+  })
+
   it('keeps the invite code readable when the waiting member row is full', async () => {
     mockParticipants.splice(
       0,
