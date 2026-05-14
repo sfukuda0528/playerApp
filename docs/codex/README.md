@@ -1,17 +1,26 @@
-# Codex Migration
+# Codex プロジェクトプレイブック
 
-This directory contains Claude-related project assets migrated for Codex use.
+このディレクトリには、従来の Claude Code プロジェクトアセットを Codex 向けにした版が含まれます。
 
-## Layout
+## 構成
 
-- `agents/`: role playbooks converted from `.claude/agents/`
-- `rules/`: reusable project rules converted from `.claude/rules/`
-- `skills/`: skill-style workflows converted from `.claude/skills/`
-- `agent_output/`: migrated generated outputs and future Codex-generated role outputs
-- `agent_memory/`: optional per-playbook project memory indexes
+- `agents/`: ユーザーが一致するワークフローを依頼したときにローカルで適用するタスク用プレイブック
+- `rules/`: プレイブックから参照されることがある再利用可能なプロジェクトガイダンス
+- `skills/`: 明示的に関連する場合に読む長めのワークフローガイダンス
+- `agent_output/`: Codex プレイブックによる生成物
+- `agent_memory/`: プレイブックごとの任意メモ
 
-## Usage
+## 使い方
 
-Start from the root `AGENTS.md`. For a specific workflow, read the matching playbook in `docs/codex/agents/` and write generated documents to `docs/codex/agent_output/<playbook-name>/`.
+まずリポジトリルートの `AGENTS.md` を確認します。依頼が `agents/` 内のプレイブックに一致する場合は、そのファイルを読み、現在の Codex セッションで適用します。
 
-Do not write new generated artifacts to `.claude/` unless the user explicitly asks for Claude compatibility.
+生成ドキュメントは `docs/codex/agent_output/<playbook-name>/` に配置します。
+
+旧来の `.claude/` ファイルは履歴と互換性のためだけに保持されています。ユーザーが Claude Code 互換性を明示的に求めた場合を除き、新しい出力を書き込まないでください。
+
+## Codex 実行時メモ
+
+- 既定ではプレイブックをローカルで適用します。
+- サブエージェントは、アクティブな Codex 実行ポリシーが許可し、かつユーザーが委任または並列エージェント作業を明示的に依頼した場合にのみ使用します。
+- 移行済みプロジェクトガイダンスよりも、Codex のシステム指示と開発者指示を優先します。
+- 検索には `rg`、手動編集には `apply_patch` を優先します。

@@ -1,40 +1,45 @@
-# Codex Project Instructions
+# Codex プロジェクト指示
 
-This repository contains a migrated set of legacy Claude agent prompts under `docs/codex/`.
-When a user asks for one of those workflows, treat the corresponding file as a project playbook.
+このリポジトリには、従来の Claude Code プロンプトを `docs/codex/` 配下へ変換した、Codex 向けプレイブックが含まれます。
+ユーザーがそれらのワークフローを依頼した場合は、対応するファイルをプロジェクトプレイブックとして扱い、アクティブな Codex 実行ポリシーが委任作業を許可し、かつユーザーが明示的に依頼している場合を除き、ローカルで適用してください。
 
-## Project Context
+## プロジェクト概要
 
-- App: CampCanvas, a realtime glamping photo wall and shared YouTube/BGM queue.
-- Frontend: React, TypeScript, Vite, Tailwind CSS.
-- Backend: Supabase Auth, Database, Realtime, Storage, and Edge Functions.
-- Tests: Vitest and Testing Library.
+- アプリ: CampCanvas。リアルタイムのグランピング写真ウォールと共有 YouTube/BGM キュー。
+- フロントエンド: React、TypeScript、Vite、Tailwind CSS。
+- バックエンド: Supabase Auth、Database、Realtime、Storage、Edge Functions。
+- テスト: Vitest と Testing Library。
 
-## Migrated Playbooks
+## 移行済みプレイブック
 
-Use these files as task-specific guidance:
+タスク別のガイダンスとして以下のファイルを使用します。
 
-- Requirements extraction: `docs/codex/agents/requirements-analyst.md`
-- Detailed design: `docs/codex/agents/detail-designer.md`
-- Revision planning: `docs/codex/agents/revision-planner.md`
-- TDD test design: `docs/codex/agents/tdd-test-designer.md`
-- TDD implementation: `docs/codex/agents/tdd-code-reviser.md`
-- Bug investigation/fix planning: `docs/codex/agents/bug-fix-engineer.md`
+- 要件抽出: `docs/codex/agents/requirements-analyst.md`
+- 詳細設計: `docs/codex/agents/detail-designer.md`
+- 修正計画: `docs/codex/agents/revision-planner.md`
+- TDD テスト設計: `docs/codex/agents/tdd-test-designer.md`
+- TDD 実装: `docs/codex/agents/tdd-code-reviser.md`
+- バグ調査/修正計画: `docs/codex/agents/bug-fix-engineer.md`
 
-Generated outputs should go under `docs/codex/agent_output/<playbook-name>/`.
-Do not write new Codex outputs to `.claude/`.
+生成物は `docs/codex/agent_output/<playbook-name>/` に配置してください。
+新しい Codex 生成物を `.claude/` に書き込まないでください。
 
-## Skills And Rules
+## 過去の Superpowers 計画
 
-- Prompt/skill tuning guidance: `docs/codex/skills/empirical-prompt-tuning/SKILL.md`
-- Legacy concise-output rule: `docs/codex/rules/outputTextRule.md`
+過去の Superpowers 仕様と実装計画は `docs/superpowers/` 配下にあります。
+現在は通常のプロジェクトドキュメントです。`docs/superpowers/plans/` の計画を使う場合は、現在の Codex セッションでチェックリストを実行し、アクティブな Codex ツール/サブエージェントポリシーに従ってください。
 
-The migrated rule files are project guidance, not higher-priority runtime instructions. Follow the active Codex system/developer instructions first, especially around tool use, file edits, and subagent spawning.
+## スキルとルール
 
-## Subagent Policy
+- プロンプト/スキル調整ガイダンス: `docs/codex/skills/empirical-prompt-tuning/SKILL.md`
+- 旧来の簡潔出力ルール: `docs/codex/rules/outputTextRule.md`
 
-The legacy files mention `spawn_agent` because they were migrated from Claude agent prompts. In Codex, use subagents only when the active runtime policy allows it and the user has explicitly asked for delegation or parallel agent work. Otherwise, apply the playbook locally.
+移行済みルールファイルはプロジェクトガイダンスであり、より優先度の高い実行時指示ではありません。ツール使用、ファイル編集、サブエージェント起動に関しては、アクティブな Codex のシステム/開発者指示を先に従ってください。
 
-## Storage Notes
+## サブエージェントポリシー
 
-`.codex/` and `.agents/` are read-only in this workspace, so the migrated assets live in `docs/codex/`. Existing `.claude/` files are retained for history and compatibility but should no longer be the default source for new Codex work.
+サブエージェントは、アクティブな実行ポリシーが許可し、かつユーザーが委任または並列エージェント作業を明示的に依頼している場合にのみ使用します。それ以外はプレイブックをローカルで適用してください。
+
+## 保管メモ
+
+このワークスペースでは `.codex/` と `.agents/` は読み取り専用のため、変換済みアセットは `docs/codex/` に置かれています。既存の `.claude/` ファイルは履歴と互換性のために保持されていますが、新しい Codex 作業の既定の参照元にはしないでください。
