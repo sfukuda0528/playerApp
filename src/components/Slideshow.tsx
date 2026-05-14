@@ -6,13 +6,58 @@ interface Props {
   photos: Photo[]
 }
 
+const SLIDE_INTERVAL_OPTIONS = [
+  { value: 3000, label: '3秒' },
+  { value: 5000, label: '5秒' },
+  { value: 8000, label: '8秒' },
+  { value: 10000, label: '10秒' },
+]
+
+const FADE_DURATION_MS = 500
+const FULLSCREEN_UI_HIDE_DELAY_MS = 3000
+const SLIDESHOW_BACKGROUND_STYLE = {
+  background: 'linear-gradient(135deg, rgba(253, 246, 236, 0.72), rgba(240, 200, 150, 0.48), rgba(224, 123, 57, 0.12))',
+}
+
+interface SlideState {
+  currentIndex: number
+  exitingIndex: number | null
+}
+
+export function getNextSlideState(previous: SlideState, nextIndex: number): SlideState {
+  if (previous.currentIndex === nextIndex) {
+    return { currentIndex: nextIndex, exitingIndex: null }
+  }
+
+  return { currentIndex: nextIndex, exitingIndex: previous.currentIndex }
+}
+
 export default function Slideshow({ photos }: Props) {
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const [slideState, setSlideState] = useState<SlideState>({ currentIndex: 0, exitingIndex: null })
   const [photoUrls, setPhotoUrls] = useState<string[]>([])
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [fullscreenEnabled] = useState(() => document.fullscreenEnabled ?? false)
   const [manualNavCount, setManualNavCount] = useState(0)
+  const [slideIntervalMs, setSlideIntervalMs] = useState(5000)
+  const [isFullscreenUiVisible, setIsFullscreenUiVisible] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const fullscreenUiTimerRef = useRef<number | null>(null)
+
+  const clearFullscreenUiTimer = () => {
+    if (fullscreenUiTimerRef.current === null) return
+    window.clearTimeout(fullscreenUiTimerRef.current)
+    fullscreenUiTimerRef.current = null
+  }
+
+  const showFullscreenUi = () => {
+    if (!isFullscreen) return
+    setIsFullscreenUiVisible(true)
+    clearFullscreenUiTimer()
+    fullscreenUiTimerRef.current = window.setTimeout(() => {
+      setIsFullscreenUiVisible(false)
+      fullscreenUiTimerRef.current = null
+    }, FULLSCREEN_UI_HIDE_DELAY_MS)
+  }
 
   const handleFullscreen = () => {
     containerRef.current?.requestFullscreen().catch(console.error)
@@ -31,10 +76,28 @@ export default function Slideshow({ photos }: Props) {
   useEffect(() => {
     if (photos.length === 0) return
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % photos.length)
-    }, 5000)
+      setSlideState((prev) => getNextSlideState(prev, (prev.currentIndex + 1) % photos.length))
+    }, slideIntervalMs)
     return () => clearInterval(timer)
-  }, [photos.length, manualNavCount])
+  }, [photos.length, manualNavCount, slideIntervalMs])
+
+  useEffect(() => {
+    if (photos.length === 0) {
+      setSlideState({ currentIndex: 0, exitingIndex: null })
+      return
+    }
+
+    setSlideState((prev) => {
+      if (prev.currentIndex < photos.length && (prev.exitingIndex === null || prev.exitingIndex < photos.length)) {
+        return prev
+      }
+
+      return {
+        currentIndex: prev.currentIndex % photos.length,
+        exitingIndex: null,
+      }
+    })
+  }, [photos.length])
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement)
@@ -42,33 +105,69 @@ export default function Slideshow({ photos }: Props) {
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
 
+  useEffect(() => {
+    clearFullscreenUiTimer()
+    setIsFullscreenUiVisible(false)
+  }, [isFullscreen])
+
+  useEffect(() => clearFullscreenUiTimer, [])
+
   const handleExitFullscreen = () => {
     document.exitFullscreen().catch(console.error)
   }
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + photos.length) % photos.length)
+    setSlideState((prev) => getNextSlideState(prev, (prev.currentIndex - 1 + photos.length) % photos.length))
     setManualNavCount((c) => c + 1)
   }
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % photos.length)
+    setSlideState((prev) => getNextSlideState(prev, (prev.currentIndex + 1) % photos.length))
     setManualNavCount((c) => c + 1)
   }
+
+  const safeIndex = photos.length > 0 ? slideState.currentIndex % photos.length : 0
+  const currentUrl = photoUrls[safeIndex]
+  const exitingUrl = slideState.exitingIndex === null ? null : photoUrls[slideState.exitingIndex]
+
+  useEffect(() => {
+    if (slideState.exitingIndex === null) return
+    const fadeTimer = window.setTimeout(() => {
+      setSlideState((prev) => ({ ...prev, exitingIndex: null }))
+    }, FADE_DURATION_MS)
+    return () => window.clearTimeout(fadeTimer)
+  }, [slideState.exitingIndex])
+
+  const speedSelect = (
+    <>
+      <label htmlFor="slideshow-interval" className="sr-only">写真送り速度</label>
+      <select
+        id="slideshow-interval"
+        value={slideIntervalMs}
+        onChange={(event) => setSlideIntervalMs(Number(event.target.value))}
+        className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full font-bold"
+      >
+        {SLIDE_INTERVAL_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </>
+  )
 
   if (photos.length === 0) {
     return (
       <div
         aria-label="スライドショー"
         className="w-full aspect-video bg-camp-wheat/40 rounded-xl flex items-center justify-center text-camp-amber text-sm"
+        style={SLIDESHOW_BACKGROUND_STYLE}
       >
         写真がまだありません
       </div>
     )
   }
 
-  const safeIndex = currentIndex % photos.length
-  const currentUrl = photoUrls[safeIndex]
   const currentPhoto = photos[safeIndex]
   const uploadedTime = currentPhoto
     ? new Intl.DateTimeFormat('ja-JP', {
@@ -79,15 +178,32 @@ export default function Slideshow({ photos }: Props) {
     : null
 
   return (
-    <div ref={containerRef} aria-label="スライドショー" className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40">
-      {currentUrl && (
+    <div
+      ref={containerRef}
+      aria-label="スライドショー"
+      onMouseMove={showFullscreenUi}
+      onTouchStart={showFullscreenUi}
+      onClick={showFullscreenUi}
+      className="relative w-full aspect-video rounded-xl overflow-hidden bg-camp-wheat/40"
+      style={SLIDESHOW_BACKGROUND_STYLE}
+    >
+      {exitingUrl && (
         <img
-          src={currentUrl}
-          alt={`スライド ${safeIndex + 1}`}
-          className="w-full h-full object-contain"
+          src={exitingUrl}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-contain animate-photo-fade-out"
         />
       )}
-      {isFullscreen && (
+      {currentUrl && (
+        <img
+          key={currentUrl}
+          src={currentUrl}
+          alt={`スライド ${safeIndex + 1}`}
+          className="absolute inset-0 w-full h-full object-contain animate-photo-crossfade"
+        />
+      )}
+      {isFullscreen && isFullscreenUiVisible && (
         <>
           <button
             type="button"
@@ -98,6 +214,7 @@ export default function Slideshow({ photos }: Props) {
             ✕
           </button>
           <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1">
+            {speedSelect}
             <span className="bg-black/60 text-white text-xs px-2 py-0.5 rounded-full">
               {safeIndex + 1} / {photos.length}
             </span>
@@ -130,6 +247,7 @@ export default function Slideshow({ photos }: Props) {
       )}
       {!isFullscreen && (
         <div className="absolute bottom-2 right-2 flex flex-wrap items-center justify-end gap-1">
+          {speedSelect}
           {uploadedTime && (
             <span className="bg-camp-dark/60 text-camp-cream text-xs px-2 py-0.5 rounded-full">
               {uploadedTime} にアップロード

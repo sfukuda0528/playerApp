@@ -10,11 +10,23 @@
   --color-camp-dark: #3d2003;
   --color-camp-destructive: #c0392b;
   --animate-slide-down: slide-down 300ms ease-out both;
+  --animate-photo-crossfade: photo-crossfade 500ms ease-in-out both;
+  --animate-photo-fade-out: photo-fade-out 500ms ease-in-out both;
 }
 
 @keyframes slide-down {
   from { transform: translateY(-100%); opacity: 0; }
   to   { transform: translateY(0);     opacity: 1; }
+}
+
+@keyframes photo-crossfade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes photo-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 @keyframes pulse-glow {
