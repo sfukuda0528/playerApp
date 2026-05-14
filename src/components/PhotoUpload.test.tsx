@@ -116,7 +116,7 @@ describe('PhotoUpload', () => {
     expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument()
   })
 
-  it('削除ボタンクリックでdeletePhotoを呼ぶ', async () => {
+  it('削除ボタンクリックで写真情報を含む確認ダイアログを表示し、確定でdeletePhotoを呼ぶ', async () => {
     mockDeletePhoto.mockResolvedValue(true)
     await act(async () => {
       render(
@@ -124,7 +124,26 @@ describe('PhotoUpload', () => {
       )
     })
     await userEvent.click(screen.getByRole('button', { name: '削除' }))
+    expect(mockDeletePhoto).not.toHaveBeenCalled()
+
+    const dialog = screen.getByRole('dialog', { name: '写真を削除しますか？' })
+    expect(dialog).toHaveTextContent('001_a.jpg')
+
+    await userEvent.click(screen.getByRole('button', { name: '削除する' }))
     expect(mockDeletePhoto).toHaveBeenCalledWith('ph-1', 'sess-1/001_a.jpg')
+  })
+
+  it('写真削除確認ダイアログはキャンセルできる', async () => {
+    await act(async () => {
+      render(
+        <PhotoUpload sessionId="sess-1" photos={[myPhoto]} currentUserId="uid-me" />
+      )
+    })
+    await userEvent.click(screen.getByRole('button', { name: '削除' }))
+    await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(screen.queryByRole('dialog', { name: '写真を削除しますか？' })).not.toBeInTheDocument()
+    expect(mockDeletePhoto).not.toHaveBeenCalled()
   })
 
   it('エラー時はアラートメッセージを表示する', () => {

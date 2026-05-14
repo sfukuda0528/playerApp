@@ -4,7 +4,7 @@ VALUES (
   'photos',
   'photos',
   false,
-  5242880,
+  20971520,
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic']
 )
 ON CONFLICT (id) DO NOTHING;

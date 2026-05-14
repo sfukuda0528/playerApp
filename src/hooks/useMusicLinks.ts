@@ -36,7 +36,7 @@ export function useMusicLinks(
   useEffect(() => {
     let cancelled = false
 
-    const fetchLinks = () => {
+    const fetchLinks = (mode: 'merge' | 'replace' = 'merge') => {
       supabase
         .from('music_links')
         .select()
@@ -48,11 +48,17 @@ export function useMusicLinks(
           setLinks((prev) => {
             const deletedIds = deletedIdsRef.current
             const fetched = (data ? data as MusicLink[] : []).filter((link) => !deletedIds.has(link.id))
+            if (mode === 'replace') return sortByQueueOrder(fetched)
             const current = prev.filter((link) => !deletedIds.has(link.id))
             return mergeLinks(fetched, current)
           })
           setLoading(false)
         })
+    }
+
+    const refreshSnapshot = () => {
+      if (document.visibilityState === 'hidden') return
+      fetchLinks('replace')
     }
 
     const channel = supabase
@@ -103,8 +109,15 @@ export function useMusicLinks(
         }
       })
 
+    window.addEventListener('focus', refreshSnapshot)
+    window.addEventListener('pageshow', refreshSnapshot)
+    document.addEventListener('visibilitychange', refreshSnapshot)
+
     return () => {
       cancelled = true
+      window.removeEventListener('focus', refreshSnapshot)
+      window.removeEventListener('pageshow', refreshSnapshot)
+      document.removeEventListener('visibilitychange', refreshSnapshot)
       supabase.removeChannel(channel)
     }
   }, [sessionId])
