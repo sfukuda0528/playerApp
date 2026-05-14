@@ -38,6 +38,13 @@ const state1: MusicPlaybackState = {
   updated_at: '2026-05-13T00:00:00Z',
 }
 
+const state2: MusicPlaybackState = {
+  ...state1,
+  current_music_link_id: 'ml-2',
+  is_playing: false,
+  updated_at: '2026-05-13T00:01:00Z',
+}
+
 describe('useMusicPlaybackState', () => {
   let handlers: Array<(payload: unknown) => void> = []
   let subscriptionCallback: ((status: string) => void) | undefined
@@ -130,5 +137,20 @@ describe('useMusicPlaybackState', () => {
 
     expect(result.current.error).toBeNull()
     expect(result.current.state).toEqual(state1)
+  })
+
+  it('復帰時に playback state を再取得して Realtime の取りこぼしを補正する', async () => {
+    mockSelectSingle
+      .mockResolvedValueOnce({ data: state1, error: null })
+      .mockResolvedValueOnce({ data: state2, error: null })
+    const { result } = renderHook(() => useMusicPlaybackState('sess-1'))
+    await waitFor(() => expect(result.current.state).toEqual(state1))
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    await waitFor(() => expect(result.current.state).toEqual(state2))
+    expect(mockSelectSingle).toHaveBeenCalledTimes(2)
   })
 })

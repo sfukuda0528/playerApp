@@ -25,8 +25,14 @@ export function useMusicPlaybackState(sessionId: string) {
             return
           }
           setState(data ? data as MusicPlaybackState : null)
+          setError(null)
           setLoading(false)
         })
+    }
+
+    const refreshSnapshot = () => {
+      if (document.visibilityState === 'hidden') return
+      fetchState()
     }
 
     const channel = supabase
@@ -53,8 +59,15 @@ export function useMusicPlaybackState(sessionId: string) {
         }
       })
 
+    window.addEventListener('focus', refreshSnapshot)
+    window.addEventListener('pageshow', refreshSnapshot)
+    document.addEventListener('visibilitychange', refreshSnapshot)
+
     return () => {
       cancelled = true
+      window.removeEventListener('focus', refreshSnapshot)
+      window.removeEventListener('pageshow', refreshSnapshot)
+      document.removeEventListener('visibilitychange', refreshSnapshot)
       supabase.removeChannel(channel)
     }
   }, [sessionId])
