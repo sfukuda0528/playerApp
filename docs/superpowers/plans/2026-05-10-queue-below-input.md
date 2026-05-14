@@ -1,6 +1,6 @@
 # MusicPanel キュー位置変更 実装計画
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Codex 向け:** この計画は現在のセッションでタスクごとに実装してください。サブエージェントは、ユーザーが委任または並列作業を明示的に依頼し、かつアクティブな Codex 実行環境が許可している場合にのみ使用します。手順は追跡用にチェックボックス（`- [ ]`）形式を使用します。
 
 **Goal:** MusicPanel のスクロールエリア内で、Tabs（検索/URL入力）を上、キューリストを下に並べ替え、それぞれをカードスタイルでラップして視覚的境界を明確にする。
 
