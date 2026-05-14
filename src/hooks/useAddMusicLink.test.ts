@@ -24,7 +24,7 @@ vi.mock('../lib/supabase', () => ({
         }),
       }),
       insert: (data: unknown) => mockLinkInsert(data),
-      delete: () => ({ eq: () => mockLinkDelete() }),
+      delete: (options?: unknown) => ({ eq: () => mockLinkDelete(options) }),
     }),
   },
 }))
@@ -52,7 +52,7 @@ describe('useAddMusicLink', () => {
     vi.clearAllMocks()
     mockGetUser.mockResolvedValue({ data: { user: { id: 'uid-1' } } })
     mockLinkInsert.mockResolvedValue({ error: null })
-    mockLinkDelete.mockResolvedValue({ error: null })
+    mockLinkDelete.mockResolvedValue({ error: null, count: 1 })
     mockGetExtreme.mockResolvedValue({ data: null })
   })
 
@@ -125,7 +125,16 @@ describe('useAddMusicLink', () => {
     let ok: boolean | undefined
     await act(async () => { ok = await result.current.deleteLink('ml-1') })
     expect(ok).toBe(true)
-    expect(mockLinkDelete).toHaveBeenCalledOnce()
+    expect(mockLinkDelete).toHaveBeenCalledWith({ count: 'exact' })
+  })
+
+  it('deleteLink: 0 件削除の場合は false を返す', async () => {
+    mockLinkDelete.mockResolvedValue({ error: null, count: 0 })
+    const { result } = renderHook(() => useAddMusicLink())
+    let ok: boolean | undefined
+    await act(async () => { ok = await result.current.deleteLink('ml-1') })
+    expect(ok).toBe(false)
+    expect(result.current.error).toBe('削除対象が見つかりませんでした')
   })
 
   describe('addLinks', () => {

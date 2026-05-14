@@ -275,10 +275,10 @@ describe('MusicPanel', () => {
       expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
     })
 
-    it('他人のリンクには削除ボタンが表示されない', () => {
+    it('他人のリンクにも削除ボタンが表示される', () => {
       mockLinks.value = [link2]
       render(<MusicPanel sessionId="sess-1" currentUserId="uid-me" />)
-      expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '削除' })).toBeInTheDocument()
     })
 
     it('ホストには他人のリンクにも削除ボタンが表示される', () => {

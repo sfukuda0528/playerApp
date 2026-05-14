@@ -76,8 +76,12 @@ export function useAddMusicLink() {
     setLoading(true)
     setError(null)
     try {
-      const { error: deleteError } = await supabase.from('music_links').delete().eq('id', linkId)
+      const { error: deleteError, count } = await supabase.from('music_links').delete({ count: 'exact' }).eq('id', linkId)
       if (deleteError) throw deleteError
+      if (count === 0) {
+        setError('削除対象が見つかりませんでした')
+        return false
+      }
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : '削除に失敗しました')
